@@ -1,0 +1,4 @@
+<main><div class="toolbar"><h1>Professores</h1><%= link_to "Novo professor", new_teacher_path, class: "button" %></div>
+<table><thead><tr><th>Nome</th><th>Usuário</th><th>E-mail</th><th></th></tr></thead><tbody>
+<% @teachers.each do |teacher| %><tr><td><%= teacher.name %></td><td><%= teacher.username %></td><td><%= teacher.email %></td><td><%= link_to "Ver", teacher %> | <%= link_to "Editar", edit_teacher_path(teacher) %> | <%= button_to "Desativar", teacher, method: :delete, class: "button danger" %></td></tr><% end %>
+</tbody></table></main>

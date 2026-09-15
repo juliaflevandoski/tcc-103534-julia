@@ -1,0 +1,1 @@
+<main><h1><%= @school_class.name %></h1><p><%= @school_class.description %></p><p>Professor: <%= @school_class.teacher.name %></p><p>Código de acesso: <strong><%= @school_class.access_code %></strong></p><%= link_to "Editar", edit_school_class_path(@school_class), class: "button" %></main>

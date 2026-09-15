@@ -1,0 +1,1 @@
+<main><h1><%= @exercise.title %></h1><p>Tipo: <%= @exercise.exercise_type %></p><p>Professor: <%= @exercise.teacher.name %></p><pre><%= JSON.pretty_generate(@exercise.object) %></pre><%= link_to "Editar", edit_exercise_path(@exercise), class: "button" %></main>

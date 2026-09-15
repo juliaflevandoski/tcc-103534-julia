@@ -1,0 +1,1 @@
+<main><h1><%= @activity.title %></h1><p>Turma: <%= @activity.school_class.name %></p><p><%= @activity.published? ? "Publicada" : "Rascunho" %></p><%= link_to "Editar", edit_activity_path(@activity), class: "button" %></main>

@@ -1,0 +1,1 @@
+<main><h1>Tentativa de <%= @exercise_attempt.student.name %></h1><p>Exercício: <%= @exercise_attempt.activity_exercise.exercise.title %></p><p>Pontuação: <%= @exercise_attempt.score %></p><pre><%= JSON.pretty_generate(@exercise_attempt.answer) %></pre><%= link_to "Editar", edit_exercise_attempt_path(@exercise_attempt), class: "button" %></main>
