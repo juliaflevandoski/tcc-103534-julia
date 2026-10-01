@@ -1,0 +1,23 @@
+<h1><%= exercise.title %></h1>
+<p><%= crossword["instructions"] %></p>
+<div class="crossword-board-scroll">
+  <table class="crossword-grid crossword-teacher-grid" aria-label="Prévia da cruzadinha com respostas">
+    <% crossword.fetch("grid").fetch("cells").each do |row| %>
+      <tr>
+        <% row.each do |letter| %>
+          <td class="<%= letter.present? ? "crossword-letter-cell" : "crossword-blocked-cell" %>"><%= letter %></td>
+        <% end %>
+      </tr>
+    <% end %>
+  </table>
+</div>
+<% [["across", "Horizontal"], ["down", "Vertical"]].each do |direction, label| %>
+  <% entries = crossword.fetch("words").select { |entry| entry["direction"] == direction }.sort_by { |entry| entry["number"] } %>
+  <% next if entries.empty? %>
+  <h2><%= label %></h2>
+  <ol>
+    <% entries.each do |entry| %>
+      <li value="<%= entry["number"] %>"><strong><%= entry["word"] %></strong>: <%= entry["clue"] %></li>
+    <% end %>
+  </ol>
+<% end %>

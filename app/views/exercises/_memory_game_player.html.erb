@@ -1,0 +1,72 @@
+<h1><%= exercise.title %></h1>
+<p><%= exercise.object.fetch("instructions") %></p>
+
+<% if attempt.nil? || attempt.answer.to_h["completed"] %>
+	<% if attempt %>
+		<% answer = attempt.answer.to_h %>
+		<% total_pairs = attempt.correct.fetch("deck").map { |card| card.fetch("pair_id") }.uniq.length %>
+		<section class="memory-result" aria-live="polite">
+			<h2>Jogo concluído</h2>
+			<p>Pares encontrados: <%= answer.fetch("matches", 0) %> de <%= total_pairs %></p>
+			<p>Tentativas: <%= answer.fetch("attempts", 0) %></p>
+			<p>Acertos: <%= answer.fetch("matches", 0) %></p>
+			<p>Erros: <%= answer.fetch("errors", 0) %></p>
+			<p>Pontuação: <%= attempt.score %></p>
+			<p>Tempo: <%= attempt.time_spent || 0 %> segundos</p>
+		</section>
+	<% end %>
+	<%= form_with url: exercise_attempts_path, scope: :exercise_attempt do %>
+		<%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
+		<%= submit_tag(attempt ? "Jogar novamente" : "Começar jogo", class: "button") %>
+	<% end %>
+<% else %>
+	<div class="memory-game" data-controller="memory-game" data-memory-game-turn-url-value="<%= memory_game_turn_exercise_attempt_path(attempt) %>">
+		<div class="memory-stats" aria-live="polite">
+			<p>Pares: <strong data-memory-game-target="matches"><%= game.fetch(:matches) %></strong> / <%= attempt.correct.fetch("deck").map { |card| card.fetch("pair_id") }.uniq.length %></p>
+			<p>Tentativas: <strong data-memory-game-target="attempts"><%= game.fetch(:attempts) %></strong></p>
+			<p>Erros: <strong data-memory-game-target="errors"><%= game.fetch(:errors) %></strong></p>
+			<p>Pontuação: <strong data-memory-game-target="score"><%= game.fetch(:score) %></strong></p>
+		</div>
+		<p data-memory-game-target="status" role="status"></p>
+		<div class="memory-board" data-memory-game-target="board" aria-label="Tabuleiro do jogo da memória">
+			<% revealed_cards = game.fetch(:revealed_cards).index_by { |card| card.fetch("id") } %>
+			<% game.fetch(:card_ids).each do |card_id| %>
+				<% card = revealed_cards[card_id] %>
+				<% found = game.fetch(:matched_card_ids).include?(card_id) %>
+				<button type="button" class="memory-card <%= "is-found" if found %> <%= "is-revealed" if card %>"
+					aria-label="<%= card ? (found ? "Par encontrado" : "Carta revelada") : "Carta virada para baixo" %>"
+					<%= "disabled" if found %>
+					data-action="memory-game#selectCard"
+					data-memory-game-target="card"
+					data-card-id="<%= card_id %>"
+					data-revealed="<%= card.present? %>"
+					data-found="<%= found %>"
+					data-selected="<%= game.fetch(:selected_card_id) == card_id %>"
+					data-pending-reset="<%= game.fetch(:pending_reset_ids).include?(card_id) %>">
+					<% if card %>
+						<% if card.fetch("type") == "word" %>
+							<%= card.fetch("content") %>
+						<% else %>
+							<%= image_tag card.fetch("url"), alt: "Imagem da carta" %>
+						<% end %>
+					<% else %>
+						<span aria-hidden="true">?</span>
+					<% end %>
+				</button>
+			<% end %>
+		</div>
+		<section class="memory-result" data-memory-game-target="completion" hidden aria-live="polite">
+			<h2>Jogo concluído</h2>
+			<p>Pares encontrados: <strong data-memory-game-target="finalMatches"></strong></p>
+			<p>Acertos: <strong data-memory-game-target="finalHits"></strong></p>
+			<p>Tentativas: <strong data-memory-game-target="finalAttempts"></strong></p>
+			<p>Erros: <strong data-memory-game-target="finalErrors"></strong></p>
+			<p>Pontuação: <strong data-memory-game-target="finalScore"></strong></p>
+			<p>Tempo: <strong data-memory-game-target="finalTime"></strong> segundos</p>
+			<%= form_with url: exercise_attempts_path, scope: :exercise_attempt do %>
+				<%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
+				<%= submit_tag "Jogar novamente", class: "button" %>
+			<% end %>
+		</section>
+	</div>
+<% end %>

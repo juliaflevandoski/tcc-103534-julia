@@ -4,6 +4,7 @@ class Exercise < ApplicationRecord
   belongs_to :teacher
   has_many :activity_exercises, dependent: :restrict_with_exception
   has_many :activities, through: :activity_exercises
+  has_many_attached :memory_images
 
   enum :exercise_type, {
     quiz: "quiz",

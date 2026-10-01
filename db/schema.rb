@@ -10,7 +10,35 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_14_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_29_000000) do
+  create_table "active_storage_attachments", force: :cascade do |t|
+    t.integer "blob_id", null: false
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.integer "record_id", null: false
+    t.string "record_type", null: false
+    t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
+    t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
+  end
+
+  create_table "active_storage_blobs", force: :cascade do |t|
+    t.bigint "byte_size", null: false
+    t.string "checksum"
+    t.string "content_type"
+    t.datetime "created_at", null: false
+    t.string "filename", null: false
+    t.string "key", null: false
+    t.text "metadata"
+    t.string "service_name", null: false
+    t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
+  end
+
+  create_table "active_storage_variant_records", force: :cascade do |t|
+    t.integer "blob_id", null: false
+    t.string "variation_digest", null: false
+    t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
   create_table "activities", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.integer "class_id", null: false
@@ -31,7 +59,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_14_000000) do
     t.integer "points", null: false
     t.integer "position", null: false
     t.datetime "updated_at", null: false
-    t.index ["activity_id", "position"], name: "index_activities_exercises_on_activity_id_and_position", unique: true
+    t.index ["activity_id", "position"], name: "index_activities_exercises_on_activity_id_and_position", unique: true, where: "active = 1"
     t.index ["activity_id"], name: "index_activities_exercises_on_activity_id"
     t.index ["exercise_id"], name: "index_activities_exercises_on_exercise_id"
   end
@@ -57,7 +85,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_14_000000) do
     t.datetime "updated_at", null: false
     t.index ["class_id"], name: "index_classes_students_on_class_id"
     t.index ["student_id", "class_id"], name: "index_classes_students_on_student_id_and_class_id", unique: true
-    t.index ["student_id"], name: "index_classes_students_on_student_id", unique: true
+    t.index ["student_id"], name: "index_classes_students_on_student_id"
   end
 
   create_table "exercise_attempts", force: :cascade do |t|
@@ -101,10 +129,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_14_000000) do
     t.string "email", limit: 150, null: false
     t.string "name", limit: 150, null: false
     t.string "password_digest", limit: 150, null: false
+    t.datetime "password_reset_sent_at"
+    t.string "password_reset_token", limit: 255
     t.string "token", limit: 255
     t.datetime "updated_at", null: false
     t.string "username", limit: 50, null: false
     t.index ["email"], name: "index_students_on_email", unique: true
+    t.index ["password_reset_token"], name: "index_students_on_password_reset_token", unique: true
     t.index ["username"], name: "index_students_on_username", unique: true
   end
 
@@ -114,13 +145,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_14_000000) do
     t.string "email", limit: 150, null: false
     t.string "name", limit: 150, null: false
     t.string "password_digest", limit: 150, null: false
+    t.datetime "password_reset_sent_at"
+    t.string "password_reset_token", limit: 255
     t.string "token", limit: 255
     t.datetime "updated_at", null: false
     t.string "username", limit: 50, null: false
     t.index ["email"], name: "index_teachers_on_email", unique: true
+    t.index ["password_reset_token"], name: "index_teachers_on_password_reset_token", unique: true
     t.index ["username"], name: "index_teachers_on_username", unique: true
   end
 
+  add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "activities", "classes"
   add_foreign_key "activities", "teachers"
   add_foreign_key "activities_exercises", "activities"

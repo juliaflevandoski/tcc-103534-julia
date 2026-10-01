@@ -4,9 +4,9 @@ class SchoolClass < ApplicationRecord
   include ActiveRecordScope
 
   belongs_to :teacher
-  has_many :class_students, dependent: :restrict_with_exception
+  has_many :class_students, foreign_key: :class_id, dependent: :restrict_with_exception
   has_many :students, through: :class_students
-  has_many :activities, dependent: :restrict_with_exception
+  has_many :activities, foreign_key: :class_id, dependent: :restrict_with_exception
 
   before_validation :assign_access_code, on: :create
 

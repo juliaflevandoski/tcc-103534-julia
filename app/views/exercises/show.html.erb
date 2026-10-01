@@ -1,1 +1,17 @@
-<main><h1><%= @exercise.title %></h1><p>Tipo: <%= @exercise.exercise_type %></p><p>Professor: <%= @exercise.teacher.name %></p><pre><%= JSON.pretty_generate(@exercise.object) %></pre><%= link_to "Editar", edit_exercise_path(@exercise), class: "button" %></main>
+<main>
+	<% if @exercise.crossword? && current_student %>
+		<%= render "crossword_player", exercise: @exercise, activity_exercise: @activity_exercise, crossword: @crossword_payload %>
+	<% elsif @exercise.crossword? %>
+		<%= render "crossword_preview", exercise: @exercise, crossword: @exercise.object %>
+	<% elsif @exercise.memory_game? && current_student %>
+		<%= render "memory_game_player", exercise: @exercise, activity_exercise: @activity_exercise, attempt: @memory_game_attempt, game: @memory_game_payload %>
+	<% elsif @exercise.memory_game? %>
+		<%= render "memory_game_preview", exercise: @exercise, cards: @memory_game_preview_deck %>
+	<% else %>
+		<h1><%= @exercise.title %></h1>
+		<p>Tipo: <%= @exercise.exercise_type %></p>
+		<% if current_teacher %><p>Professor: <%= @exercise.teacher.name %></p><% end %>
+		<pre><%= JSON.pretty_generate(@exercise.object) %></pre>
+	<% end %>
+	<% if current_teacher %><%= link_to "Editar", edit_exercise_path(@exercise), class: "button" %><% end %>
+</main>

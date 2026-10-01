@@ -1,14 +1,29 @@
 Rails.application.routes.draw do
   root "school_classes#index"
 
-  resources :teachers
-  resources :students
-  resources :school_classes
+  get "login", to: "sessions#new"
+  post "login", to: "sessions#create"
+  delete "logout", to: "sessions#destroy"
+  get "register/:role", to: "registrations#new", as: :register
+  post "register/:role", to: "registrations#create"
+  get "password/reset", to: "password_resets#new", as: :new_password_reset
+  post "password/reset", to: "password_resets#create"
+  get "password/reset/:role/:token", to: "password_resets#edit", as: :edit_password_reset
+  patch "password/reset/:role/:token", to: "password_resets#update"
+  resources :school_classes do
+    post :join, on: :collection
+    delete :leave, on: :member
+  end
   resources :class_students
   resources :activities
-  resources :exercises
+  patch "activities/:activity_id/activity_exercises/reorder", to: "activity_exercises#reorder", as: :reorder_activity_exercises
+  resources :exercises do
+    post :crossword_preview, on: :collection
+  end
   resources :activity_exercises
-  resources :exercise_attempts
+  resources :exercise_attempts do
+    post :memory_game_turn, on: :member
+  end
   resources :student_stats
 
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html

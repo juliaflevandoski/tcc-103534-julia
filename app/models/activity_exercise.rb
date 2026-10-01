@@ -8,7 +8,7 @@ class ActivityExercise < ApplicationRecord
   has_many :exercise_attempts, dependent: :restrict_with_exception
 
   validates :position, :points, presence: true
-  validates :position, uniqueness: { scope: :activity_id }
+  validates :position, uniqueness: { scope: :activity_id, conditions: -> { where(active: true) } }, if: :active?
   validates :position, :points, numericality: { greater_than_or_equal_to: 0 }
 
   scope :ordered, -> { order(:position) }

@@ -1,0 +1,41 @@
+<h1><%= exercise.title %></h1>
+<p><%= crossword.fetch(:instructions) %></p>
+<%= form_with url: exercise_attempts_path, scope: :exercise_attempt, data: { controller: "crossword-player", action: "submit->crossword-player#serializeAnswer" } do %>
+  <%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
+  <%= hidden_field_tag "exercise_attempt[answer]", "{}", data: { crossword_player_target: "answer" } %>
+  <div class="crossword-board-scroll">
+    <table class="crossword-grid crossword-answer-grid" aria-label="Grade de palavras cruzadas">
+      <% crossword.fetch(:grid_mask).each_with_index do |row, row_index| %>
+        <tr>
+          <% row.each_with_index do |open_cell, column_index| %>
+            <% if open_cell %>
+              <% starting_numbers = crossword.fetch(:entries).select { |entry| entry[:row] == row_index && entry[:column] == column_index }.map { |entry| entry[:number] }.uniq %>
+              <td class="crossword-letter-cell">
+                <% if starting_numbers.any? %><span class="crossword-cell-number"><%= starting_numbers.min %></span><% end %>
+                <input type="text" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false"
+                  aria-label="Linha <%= row_index + 1 %>, coluna <%= column_index + 1 %>"
+                  data-crossword-player-target="cell" data-row="<%= row_index %>" data-column="<%= column_index %>"
+                  data-action="input->crossword-player#inputLetter keydown->crossword-player#navigateCells">
+              </td>
+            <% else %>
+              <td class="crossword-blocked-cell" aria-hidden="true"></td>
+            <% end %>
+          <% end %>
+        </tr>
+      <% end %>
+    </table>
+  </div>
+
+  <% [["across", "Horizontal"], ["down", "Vertical"]].each do |direction, label| %>
+    <% entries = crossword.fetch(:entries).select { |entry| entry[:direction] == direction }.sort_by { |entry| entry[:number] } %>
+    <% next if entries.empty? %>
+    <h2><%= label %></h2>
+    <ol>
+      <% entries.each do |entry| %>
+        <li value="<%= entry[:number] %>"><%= entry[:clue] %> (<%= entry[:length] %> letras)</li>
+      <% end %>
+    </ol>
+  <% end %>
+
+  <div class="actions"><%= submit_tag "Conferir cruzadinha", class: "button" %></div>
+<% end %>

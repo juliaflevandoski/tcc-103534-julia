@@ -1,0 +1,8 @@
+<main>
+  <h1>Recuperar senha</h1>
+  <%= form_with url: new_password_reset_path, method: :post do |form| %>
+    <%= hidden_field_tag :role, @role %>
+    <%= form.label :email, "E-mail" %><%= form.email_field :email, required: true %>
+    <div class="actions"><%= form.submit "Solicitar recuperação", class: "button" %><%= link_to "Voltar", login_path(role: @role) %></div>
+  <% end %>
+</main>

@@ -1,0 +1,12 @@
+<main>
+  <h1>Cadastro de <%= @role == "teacher" ? "professor" : "aluno" %></h1>
+  <%= form_with url: register_path(@role), scope: :registration do |form| %>
+    <% if @user&.errors&.any? %><div class="errors"><%= @user.errors.full_messages.to_sentence %></div><% end %>
+    <%= form.label :name, "Nome" %><%= form.text_field :name, required: true %>
+    <%= form.label :username, "Usuário" %><%= form.text_field :username, required: true %>
+    <%= form.label :email, "E-mail" %><%= form.email_field :email, required: true %>
+    <%= form.label :password, "Senha" %><%= form.password_field :password, required: true %>
+    <%= form.label :password_confirmation, "Confirme a senha" %><%= form.password_field :password_confirmation, required: true %>
+    <div class="actions"><%= form.submit "Cadastrar", class: "button" %><%= link_to "Voltar", login_path(role: @role) %></div>
+  <% end %>
+</main>

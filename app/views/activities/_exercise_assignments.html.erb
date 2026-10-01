@@ -1,0 +1,29 @@
+<section>
+  <% if current_teacher %>
+    <h2>Adicionar exercício à aula</h2>
+    <%= form_with model: activity_exercise, url: activity_exercises_path do |form| %>
+      <%= form.hidden_field :activity_id, value: activity.id %>
+      <%= form.label :exercise_id, "Exercício" %>
+      <%= form.collection_select :exercise_id, available_exercises, :id, :title, include_blank: true %>
+      <%= form.label :points, "Pontos" %>
+      <%= form.number_field :points, min: 0 %>
+      <div class="actions"><%= form.submit "Adicionar exercício", class: "button" %></div>
+    <% end %>
+    <p><%= link_to "Criar exercício", new_exercise_path, class: "button" %></p>
+  <% end %>
+
+  <h2>Exercícios na aula</h2>
+  <table class="exercise-table" data-controller="sortable-exercises" data-sortable-exercises-url-value="<%= reorder_activity_exercises_path(activity) %>">
+    <thead><tr><th>Posição</th><th>Exercício</th><th>Pontos</th><% if current_teacher %><th>Ações</th><% end %></tr></thead>
+    <tbody data-sortable-exercises-target="list">
+    <% activity_exercises.each do |activity_exercise| %>
+      <tr draggable="true" data-id="<%= activity_exercise.id %>">
+        <td><i class="fa-solid fa-grip-vertical" aria-hidden="true" title="Arrastar para reordenar"></i> <span data-position><%= activity_exercise.position %></span></td>
+        <td><%= link_to activity_exercise.exercise.title, exercise_path(activity_exercise.exercise, activity_exercise_id: activity_exercise.id) %></td>
+        <td><%= activity_exercise.points %></td>
+        <% if current_teacher %><td><%= button_to "Remover", activity_exercise_path(activity_exercise), method: :delete, class: "button danger" %></td><% end %>
+      </tr>
+    <% end %>
+    </tbody>
+  </table>
+</section>

@@ -1,1 +1,7 @@
-<main><h1><%= @activity.title %></h1><p>Turma: <%= @activity.school_class.name %></p><p><%= @activity.published? ? "Publicada" : "Rascunho" %></p><%= link_to "Editar", edit_activity_path(@activity), class: "button" %></main>
+<main>
+	<h1><%= @activity.title %></h1>
+	<p>Turma: <%= @activity.school_class.name %></p>
+	<p><%= @activity.published? ? "Publicada" : "Rascunho" %></p>
+	<% if current_teacher %><%= link_to "Editar", edit_activity_path(@activity), class: "button" %><% end %>
+	<%= render "exercise_assignments", activity: @activity, activity_exercises: @activity_exercises, available_exercises: @available_exercises, activity_exercise: @activity_exercise %>
+</main>

@@ -1,4 +1,6 @@
 class ClassStudent < ApplicationRecord
+  self.table_name = "classes_students"
+
   include ActiveRecordScope
 
   belongs_to :student

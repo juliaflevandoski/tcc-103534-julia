@@ -20,19 +20,21 @@
 
     <%# Includes all stylesheet files in app/assets/stylesheets %>
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" %>
     <%= javascript_importmap_tags %>
   </head>
 
   <body>
     <header class="site-header">
       <%= link_to "Ludus", root_path, class: "brand" %>
-      <nav>
-        <%= link_to "Turmas", school_classes_path %>
-        <%= link_to "Aulas", activities_path %>
-        <%= link_to "Exercícios", exercises_path %>
-        <%= link_to "Alunos", students_path %>
-        <%= link_to "Professores", teachers_path %>
-      </nav>
+      <% if authenticated? %>
+        <nav>
+          <%= link_to "Turmas", school_classes_path %>
+          <%= link_to "Aulas", activities_path %>
+          <% if current_teacher %><%= link_to "Exercícios", exercises_path %><% end %>
+        </nav>
+        <%= button_to "Sair", logout_path, method: :delete, class: "button" %>
+      <% end %>
     </header>
     <% if notice %><p class="notice"><%= notice %></p><% end %>
     <% if alert %><p class="alert"><%= alert %></p><% end %>

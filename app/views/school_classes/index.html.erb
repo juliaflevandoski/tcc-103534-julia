@@ -1,1 +1,9 @@
-<main><div class="toolbar"><h1>Turmas</h1><%= link_to "Nova turma", new_school_class_path, class: "button" %></div><table><thead><tr><th>Nome</th><th>Professor</th><th>Código</th><th></th></tr></thead><tbody><% @school_classes.each do |school_class| %><tr><td><%= school_class.name %></td><td><%= school_class.teacher.name %></td><td><%= school_class.access_code %></td><td><%= link_to "Ver", school_class %> | <%= link_to "Editar", edit_school_class_path(school_class) %> | <%= button_to "Desativar", school_class, method: :delete, class: "button danger" %></td></tr><% end %></tbody></table></main>
+<main>
+	<div class="toolbar"><h1>Turmas</h1><% if current_teacher %><%= link_to "Nova turma", new_school_class_path, class: "button" %><% end %></div>
+	<% if current_student %><%= render "join_form" %><% end %>
+	<table><thead><tr><th>Nome</th><th>Professor</th><% if current_teacher %><th>Código</th><% end %><th></th></tr></thead><tbody>
+		<% @school_classes.each do |school_class| %>
+			<tr><td><%= school_class.name %></td><td><%= school_class.teacher.name %></td><% if current_teacher %><td><%= school_class.access_code %></td><% end %><td><%= link_to "Ver", school_class %><% if current_teacher %> | <%= link_to "Editar", edit_school_class_path(school_class) %> | <%= button_to "Desativar", school_class, method: :delete, class: "button danger" %><% else %> | <%= button_to "Sair", leave_school_class_path(school_class), method: :delete, class: "button danger" %><% end %></td></tr>
+		<% end %>
+	</tbody></table>
+</main>

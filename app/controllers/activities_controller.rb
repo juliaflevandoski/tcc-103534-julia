@@ -2,18 +2,32 @@ class ActivitiesController < ApplicationController
   before_action :set_activity, only: %i[show edit update destroy]
 
   def index
-    @activities = Activity.active.includes(:school_class, :teacher).order(:title)
+    authorize Activity
+    @activities = if current_teacher
+      current_teacher.activities.active.includes(:school_class, :teacher).order(:title)
+    else
+      Activity.active.published.joins(school_class: :class_students).where(classes_students: { student_id: current_student.id, active: true }).includes(:school_class, :teacher).order(:title)
+    end
   end
 
-  def show; end
+  def show
+    authorize @activity
+    return unless current_teacher
+
+    @activity_exercises = @activity.activity_exercises.active.ordered.includes(:exercise)
+    @available_exercises = current_teacher.exercises.active.order(:title)
+    @activity_exercise = @activity.activity_exercises.build(position: next_position, points: 0)
+  end
 
   def new
     @activity = Activity.new
+    authorize @activity
     load_options
   end
 
   def create
-    @activity = Activity.new(activity_params)
+    @activity = current_teacher.activities.build(activity_params)
+    authorize @activity
     return redirect_to @activity if @activity.save
 
     load_options
@@ -21,10 +35,13 @@ class ActivitiesController < ApplicationController
   end
 
   def edit
+    authorize @activity
     load_options
+    load_exercise_options
   end
 
   def update
+    authorize @activity
     return redirect_to @activity if @activity.update(activity_params)
 
     load_options
@@ -32,6 +49,7 @@ class ActivitiesController < ApplicationController
   end
 
   def destroy
+    authorize @activity
     @activity.update!(active: false)
     redirect_to activities_path, notice: "Aula desativada."
   end
@@ -43,11 +61,20 @@ class ActivitiesController < ApplicationController
   end
 
   def load_options
-    @school_classes = SchoolClass.active.includes(:teacher).order(:name)
-    @teachers = Teacher.active.order(:name)
+    @school_classes = current_teacher.school_classes.active.order(:name)
+  end
+
+  def load_exercise_options
+    @activity_exercises = @activity.activity_exercises.active.ordered.includes(:exercise)
+    @available_exercises = current_teacher.exercises.active.order(:title)
+    @activity_exercise = @activity.activity_exercises.build(position: next_position, points: 0)
   end
 
   def activity_params
-    params.require(:activity).permit(:class_id, :teacher_id, :title, :published)
+    params.require(:activity).permit(:class_id, :title, :published)
+  end
+
+  def next_position
+    @activity.activity_exercises.active.maximum(:position).to_i + 1
   end
 end

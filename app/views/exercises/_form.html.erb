@@ -1,1 +1,179 @@
-<%= render "shared/errors", record: exercise %><%= form_with model: exercise do |form| %><%= form.label :teacher_id, "Professor" %><%= form.collection_select :teacher_id, teachers, :id, :name, include_blank: true %><%= form.label :title, "Título" %><%= form.text_field :title %><%= form.label :description, "Descrição" %><%= form.text_area :description %><%= form.label :exercise_type, "Tipo" %><%= form.select :exercise_type, Exercise.exercise_types.keys.map { |type| [type.humanize, type] }, include_blank: true %><%= form.label :object, "Conteúdo JSON" %><%= form.text_area :object, value: exercise.object.to_json, rows: 12 %><div class="actions"><%= form.submit "Salvar" %><%= link_to "Cancelar", exercises_path, class: "button" %></div><% end %>
+<%= render "shared/errors", record: exercise %>
+<% memory_image_urls = exercise.memory_images_attachments.to_h { |attachment| [attachment.blob_id.to_s, rails_blob_path(attachment.blob, only_path: true)] } %>
+<%= form_with model: exercise, multipart: true, data: { controller: "exercise-form", action: "submit->exercise-form#prepareObject", exercise_form_crossword_preview_url_value: crossword_preview_exercises_path, exercise_form_memory_game_image_urls_value: memory_image_urls.to_json } do |form| %>
+	<%= form.label :title, "Título" %>
+	<%= form.text_field :title, data: { exercise_form_target: "title" } %>
+
+	<%= form.label :description, "Descrição" %>
+	<%= form.text_area :description %>
+
+	<%= form.label :exercise_type, "Tipo" %>
+	<%= form.select :exercise_type,
+		[["Quiz", "quiz"], ["Complete as lacunas", "fill_blanks"], ["Ordenação", "ordering"], ["Palavra cruzada", "crossword"], ["Jogo da memória", "memory_game"]],
+		{ include_blank: "Selecione um tipo" },
+		required: true,
+		data: { exercise_form_target: "typeSelect", action: "change->exercise-form#changeType" } %>
+
+	<%= form.hidden_field :object, value: exercise.object.to_json, data: { exercise_form_target: "objectInput" } %>
+
+	<section data-exercise-form-target="quizFields" hidden>
+		<div data-exercise-form-target="questionsList"></div>
+		<template data-exercise-form-target="questionTemplate">
+			<fieldset class="quiz-question" data-question>
+				<legend data-question-title></legend>
+				<button type="button" class="button danger" data-action="exercise-form#removeQuestion">Remover pergunta</button>
+
+				<label>Tipo da pergunta
+					<select data-question-type data-action="change->exercise-form#changeQuestionType">
+						<option value="multiple_choice">Múltipla escolha</option>
+						<option value="true_false">Verdadeiro ou falso</option>
+						<option value="short_answer">Resposta curta</option>
+					</select>
+				</label>
+
+				<label>Enunciado<textarea data-question-statement></textarea></label>
+
+				<fieldset data-question-options-panel hidden disabled>
+					<legend>Alternativas</legend>
+					<div data-question-options-list></div>
+					<template data-question-option-template>
+						<div class="quiz-option" data-option-row>
+							<label>Alternativa<input type="text" data-option-text></label>
+							<label class="quiz-correct-option"><input type="radio" data-option-correct> Correta</label>
+							<button type="button" class="button danger" data-action="exercise-form#removeOption">Remover alternativa</button>
+						</div>
+					</template>
+					<button type="button" class="button" data-action="exercise-form#addOption">Adicionar alternativa</button>
+				</fieldset>
+
+				<fieldset data-question-true-false-panel hidden disabled>
+					<legend>Resposta correta</legend>
+					<label><input type="radio" value="true" data-question-true-false-correct> Verdadeiro</label>
+					<label><input type="radio" value="false" data-question-true-false-correct> Falso</label>
+				</fieldset>
+
+				<fieldset data-question-short-answer-panel hidden disabled>
+					<legend>Resposta esperada</legend>
+					<input type="text" data-question-short-answer-correct>
+				</fieldset>
+			</fieldset>
+		</template>
+		<button type="button" class="button" data-action="exercise-form#addQuestion">Adicionar pergunta</button>
+		<p class="errors" data-exercise-form-target="error" role="alert" hidden></p>
+	</section>
+
+	<section data-exercise-form-target="fillBlanksFields" hidden>
+		<%= label_tag :fill_text_template, "Texto do exercício" %>
+		<%= text_area_tag :fill_text_template, nil,
+			data: { exercise_form_target: "fillTextTemplate", action: "input->exercise-form#refreshBlanks" } %>
+		<button type="button" class="button" data-action="exercise-form#convertSelection">Converter seleção em lacuna</button>
+		<div data-exercise-form-target="blanksList"></div>
+		<template data-exercise-form-target="blankTemplate">
+			<label data-blank-row>Resposta para lacuna <span data-blank-number></span>
+				<input type="text" data-blank-answer>
+			</label>
+		</template>
+		<p class="errors" data-exercise-form-target="blankError" role="alert" hidden></p>
+	</section>
+
+	<section data-exercise-form-target="orderingFields" hidden>
+		<%= label_tag :ordering_instructions, "Pergunta ou instrução" %>
+		<%= text_area_tag :ordering_instructions, nil, data: { exercise_form_target: "orderingInstructions" } %>
+
+		<%= label_tag :ordering_item_type, "Tipo dos itens" %>
+		<%= select_tag :ordering_item_type,
+			options_for_select([["Palavras ou elementos", "words"], ["Números inteiros", "numbers"]]),
+			data: { exercise_form_target: "orderingItemType", action: "change->exercise-form#changeOrderingItemType" } %>
+
+		<ol data-exercise-form-target="orderingItemsList" class="ordering-items-list"></ol>
+		<template data-exercise-form-target="orderingItemTemplate">
+			<li data-ordering-item draggable="true" data-action="dragstart->exercise-form#startOrderingItemDrag dragover->exercise-form#allowOrderingItemDrop drop->exercise-form#dropOrderingItem dragend->exercise-form#endOrderingItemDrag">
+				<span class="fa-solid fa-grip-vertical ordering-item-grip" aria-hidden="true" title="Arraste para definir a ordem correta"></span>
+				<label>Item <span data-ordering-item-number></span>
+					<input type="text" data-ordering-item-value>
+				</label>
+				<button type="button" class="button danger" data-action="exercise-form#removeOrderingItem">Remover item</button>
+			</li>
+		</template>
+		<button type="button" class="button" data-action="exercise-form#addOrderingItem">Adicionar item</button>
+		<p class="errors" data-exercise-form-target="orderingError" role="alert" hidden></p>
+	</section>
+
+	<section data-exercise-form-target="crosswordFields" hidden>
+		<%= label_tag :crossword_instructions, "Instruções" %>
+		<%= text_area_tag :crossword_instructions, nil,
+			data: { exercise_form_target: "crosswordInstructions", action: "input->exercise-form#invalidateCrosswordPreview" } %>
+
+		<h2>Palavras e pistas</h2>
+		<div data-exercise-form-target="crosswordWordsList"></div>
+		<template data-exercise-form-target="crosswordWordTemplate">
+			<div class="crossword-word-row" data-crossword-word>
+				<label>Palavra<input type="text" data-crossword-word-value autocomplete="off"></label>
+				<label>Pista<input type="text" data-crossword-clue-value></label>
+				<button type="button" class="button danger" data-action="exercise-form#removeCrosswordWord">Remover palavra</button>
+			</div>
+		</template>
+		<button type="button" class="button" data-action="exercise-form#addCrosswordWord">Adicionar palavra</button>
+		<%= hidden_field_tag :crossword_layout_seed, nil, data: { exercise_form_target: "crosswordSeed" } %>
+		<div class="actions">
+			<button type="button" class="button" data-action="exercise-form#previewCrossword">Gerar prévia</button>
+			<button type="button" class="button" data-action="exercise-form#regenerateCrossword">Gerar outra disposição</button>
+		</div>
+		<p class="errors" data-exercise-form-target="crosswordError" role="alert" hidden></p>
+		<section data-exercise-form-target="crosswordPreview" hidden aria-live="polite"></section>
+	</section>
+
+	<fieldset data-exercise-form-target="memoryGameFields" hidden disabled>
+		<legend>Jogo da memória</legend>
+		<div data-exercise-form-target="memoryEditor">
+			<%= label_tag :memory_game_instructions, "Instruções" %>
+			<%= text_area_tag :memory_game_instructions, nil, data: { exercise_form_target: "memoryInstructions" } %>
+
+			<%= label_tag :memory_game_pair_type, "Tipo de associação" %>
+			<%= select_tag :memory_game_pair_type,
+				options_for_select([["Palavra ↔ Palavra", "word_word"], ["Palavra ↔ Imagem", "word_image"], ["Imagem ↔ Imagem", "image_image"]]),
+				data: { exercise_form_target: "memoryPairType", action: "change->exercise-form#changeMemoryPairType" } %>
+
+			<div data-exercise-form-target="memoryPairsList"></div>
+			<template data-exercise-form-target="memoryPairTemplate">
+				<fieldset class="memory-pair" data-memory-pair>
+					<legend>Par <span data-memory-pair-number></span></legend>
+					<div data-memory-side="left">
+						<label data-memory-word-field>Elemento da esquerda<input type="text" data-memory-word></label>
+						<label data-memory-image-field hidden>Imagem da esquerda
+							<input type="file" accept="image/png,image/jpeg,image/webp" data-memory-image>
+							<img data-memory-image-preview alt="Prévia da imagem" hidden>
+							<span data-memory-image-current hidden>Imagem atual</span>
+						</label>
+					</div>
+					<div data-memory-side="right">
+						<label data-memory-word-field>Elemento da direita<input type="text" data-memory-word></label>
+						<label data-memory-image-field hidden>Imagem da direita
+							<input type="file" accept="image/png,image/jpeg,image/webp" data-memory-image>
+							<img data-memory-image-preview alt="Prévia da imagem" hidden>
+							<span data-memory-image-current hidden>Imagem atual</span>
+						</label>
+					</div>
+					<button type="button" class="button danger" data-action="exercise-form#removeMemoryPair">Remover par</button>
+				</fieldset>
+			</template>
+			<button type="button" class="button" data-action="exercise-form#addMemoryPair">Adicionar par</button>
+			<p class="errors" data-exercise-form-target="memoryGameError" role="alert" hidden></p>
+			<div class="actions">
+				<button type="button" class="button" data-exercise-form-target="memoryPreviewButton" data-action="exercise-form#previewMemoryGame">Pré-visualizar jogo</button>
+				<button type="button" class="button" data-exercise-form-target="memoryEditButton" data-action="exercise-form#editMemoryGame" hidden>Voltar à edição</button>
+			</div>
+		</div>
+		<section data-exercise-form-target="memoryPreview" hidden aria-live="polite"></section>
+	</fieldset>
+
+	<div data-exercise-form-target="rawFields">
+		<%= label_tag :exercise_object_json, "Conteúdo JSON" %>
+		<%= text_area_tag :exercise_object_json, JSON.pretty_generate(exercise.object || {}), rows: 12, data: { exercise_form_target: "rawObject" } %>
+	</div>
+
+	<div class="actions">
+		<%= form.submit "Salvar", data: { exercise_form_target: "submitButton" } %>
+		<%= link_to "Cancelar", exercises_path, class: "button" %>
+	</div>
+<% end %>

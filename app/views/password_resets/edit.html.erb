@@ -1,0 +1,8 @@
+<main>
+  <h1>Definir nova senha</h1>
+  <%= form_with url: edit_password_reset_path(@role, @token), method: :patch, scope: :user do |form| %>
+    <%= form.label :password, "Nova senha" %><%= form.password_field :password, required: true %>
+    <%= form.label :password_confirmation, "Confirme a nova senha" %><%= form.password_field :password_confirmation, required: true %>
+    <div class="actions"><%= form.submit "Redefinir senha", class: "button" %></div>
+  <% end %>
+</main>

@@ -1,1 +1,30 @@
-<main><h1>Tentativa de <%= @exercise_attempt.student.name %></h1><p>Exercício: <%= @exercise_attempt.activity_exercise.exercise.title %></p><p>Pontuação: <%= @exercise_attempt.score %></p><pre><%= JSON.pretty_generate(@exercise_attempt.answer) %></pre><%= link_to "Editar", edit_exercise_attempt_path(@exercise_attempt), class: "button" %></main>
+<main>
+	<h1>Tentativa de <%= @exercise_attempt.student.name %></h1>
+	<p>Exercício: <%= @exercise_attempt.activity_exercise.exercise.title %></p>
+	<p>Pontuação: <%= @exercise_attempt.score %></p>
+	<% if @exercise_attempt.activity_exercise.exercise.crossword? && current_student %>
+		<% statuses = @exercise_attempt.correct.fetch("statuses", {}) %>
+		<% entries = @exercise_attempt.activity_exercise.exercise.object.fetch("words") %>
+		<p><%= statuses.values.count(true) %> de <%= statuses.length %> palavras corretas</p>
+		<ul>
+			<% entries.each do |entry| %>
+				<li>Pista <%= entry.fetch("number") %>: <%= statuses[entry.fetch("id")] ? "Correta" : "Incorreta ou incompleta" %></li>
+			<% end %>
+		</ul>
+		<%= link_to "Tentar novamente", exercise_path(@exercise_attempt.activity_exercise.exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
+	<% elsif @exercise_attempt.activity_exercise.exercise.memory_game? && current_student %>
+		<% result = @exercise_attempt.answer.to_h %>
+		<% total_pairs = @exercise_attempt.correct.fetch("deck").map { |card| card.fetch("pair_id") }.uniq.length %>
+		<p>Pares encontrados: <%= result.fetch("matches", 0) %> de <%= total_pairs %></p>
+		<p>Tentativas: <%= result.fetch("attempts", 0) %></p>
+		<p>Acertos: <%= result.fetch("matches", 0) %></p>
+		<p>Erros: <%= result.fetch("errors", 0) %></p>
+		<p>Tempo: <%= @exercise_attempt.time_spent || 0 %> segundos</p>
+		<%= link_to "Voltar ao jogo", exercise_path(@exercise_attempt.activity_exercise.exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id, memory_game_attempt_id: @exercise_attempt.id), class: "button" unless result["completed"] %>
+	<% else %>
+		<pre><%= JSON.pretty_generate(@exercise_attempt.answer) %></pre>
+	<% end %>
+	<% if current_teacher && !@exercise_attempt.activity_exercise.exercise.crossword? %>
+		<%= link_to "Editar", edit_exercise_attempt_path(@exercise_attempt), class: "button" %>
+	<% end %>
+</main>

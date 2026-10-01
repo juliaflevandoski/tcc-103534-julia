@@ -1,0 +1,40 @@
+<h1><%= exercise.title %></h1>
+<p><%= exercise.object.fetch("instructions") %></p>
+<p>
+	<% pair_labels = { "word_word" => "Palavra ↔ Palavra", "word_image" => "Palavra ↔ Imagem", "image_image" => "Imagem ↔ Imagem" } %>
+	Tipo: <%= pair_labels.fetch(exercise.object.fetch("pair_type")) %>
+	· <%= exercise.object.fetch("pairs").length %> pares
+	· <%= cards.length %> cartas
+</p>
+
+<div class="memory-board memory-board-preview" aria-label="Prévia embaralhada do tabuleiro">
+	<% cards.each do |card| %>
+		<div class="memory-card is-revealed">
+			<% if card.dig("element", "type") == "word" %>
+				<%= card.dig("element", "content") %>
+			<% else %>
+				<% attachment = exercise.memory_images_attachments.find_by!(blob_id: card.dig("element", "blob_id")) %>
+				<%= image_tag rails_blob_path(attachment.blob, only_path: true), alt: "Imagem da carta" %>
+			<% end %>
+		</div>
+	<% end %>
+</div>
+
+<h2>Pares cadastrados</h2>
+<ol class="memory-pair-summary">
+	<% exercise.object.fetch("pairs").each do |pair| %>
+		<li>
+			<% %w[left right].each do |side| %>
+				<% element = pair.fetch(side) %>
+				<span>
+					<% if element.fetch("type") == "word" %>
+						<%= element.fetch("content") %>
+					<% else %>
+						<% attachment = exercise.memory_images_attachments.find_by!(blob_id: element.fetch("blob_id")) %>
+						<%= image_tag rails_blob_path(attachment.blob, only_path: true), alt: "Imagem do par" %>
+					<% end %>
+				</span>
+			<% end %>
+		</li>
+	<% end %>
+</ol>

@@ -1,1 +1,15 @@
-<main><h1><%= @school_class.name %></h1><p><%= @school_class.description %></p><p>Professor: <%= @school_class.teacher.name %></p><p>Código de acesso: <strong><%= @school_class.access_code %></strong></p><%= link_to "Editar", edit_school_class_path(@school_class), class: "button" %></main>
+<main>
+	<h1><%= @school_class.name %></h1>
+	<p><%= @school_class.description %></p>
+	<p>Professor: <%= @school_class.teacher.name %></p>
+	<% if current_teacher %><p>Código de acesso: <strong><%= @school_class.access_code %></strong></p><%= link_to "Editar", edit_school_class_path(@school_class), class: "button" %><% end %>
+	<h2>Aulas</h2>
+	<% @activities.each do |activity| %>
+		<h3><%= link_to activity.title, activity_path(activity) %></h3>
+		<%= render "activities/exercise_assignments", activity: activity, activity_exercises: activity.activity_exercises.active.ordered, available_exercises: @available_exercises, activity_exercise: activity.activity_exercises.build(position: activity.activity_exercises.active.maximum(:position).to_i + 1, points: 0) %>
+	<% end %>
+	<% if current_teacher %>
+		<h2>Alunos matriculados</h2>
+		<ul><% @class_students.each do |class_student| %><li><%= class_student.student.name %> (<%= class_student.student.email %>)</li><% end %></ul>
+	<% end %>
+</main>
