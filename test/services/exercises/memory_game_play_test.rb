@@ -95,6 +95,8 @@ class Exercises::MemoryGamePlayTest < ActiveSupport::TestCase
 
   def game_object
     {
+      "instructions" => "Combine os pares.",
+      "pair_type" => "word_word",
       "pairs" => 4.times.map do |index|
         {
           "id" => "pair-#{index + 1}",

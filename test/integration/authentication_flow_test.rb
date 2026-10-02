@@ -153,7 +153,9 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     assert_equal activity, exercise.activity_exercises.order(:id).last.activity
     assert_equal 1, exercise.activity_exercises.order(:id).last.position
 
-    second_exercise = teacher.exercises.create!(title: "Quanto é 3 + 3?", exercise_type: "quiz", object: { statement: "Quanto é 3 + 3?" })
+    second_exercise = teacher.exercises.create!(title: "Quanto é 3 + 3?", exercise_type: "quiz", object: {
+      questions: [ { question_type: "short_answer", statement: "Quanto é 3 + 3?", correct_answer: "6" } ]
+    })
     post activity_exercises_url, params: { activity_exercise: { activity_id: activity.id, exercise_id: second_exercise.id, points: 7 } }
     assert_equal 2, activity.activity_exercises.active.order(:position).last.position
 
@@ -162,7 +164,9 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     assert_equal [ second_exercise.id, exercise.id ], activity.reload.activity_exercises.active.order(:position).pluck(:exercise_id)
 
     exercise.activity_exercises.first.update!(active: false)
-    third_exercise = teacher.exercises.create!(title: "Quanto é 4 + 4?", exercise_type: "quiz", object: { statement: "Quanto é 4 + 4?" })
+    third_exercise = teacher.exercises.create!(title: "Quanto é 4 + 4?", exercise_type: "quiz", object: {
+      questions: [ { question_type: "short_answer", statement: "Quanto é 4 + 4?", correct_answer: "8" } ]
+    })
     post activity_exercises_url, params: { activity_exercise: { activity_id: activity.id, exercise_id: third_exercise.id, points: 9 } }
 
     assert_redirected_to activity_url(activity)
@@ -312,6 +316,7 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_response :success
     assert_select "button.memory-card[data-memory-game-target='card']", count: 4
+    assert_select "strong[data-memory-game-target='finalXp']"
     assert_not_includes response.body, "DOG"
     assert_not_includes response.body, "pair_id"
 
@@ -327,9 +332,13 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
 
     complete_memory_attempt(attempt, pair_count: 2)
     assert_equal 11, attempt.reload.score
+    assert_equal true, attempt.correct.fetch("xp_award_claimed")
     assert_equal 4, attempt.correct.fetch("deck").length
     assert_equal original_deck, attempt.correct.fetch("deck")
     assert_equal 11, student.reload.student_stat.xp
+    get exercise_url(exercise, activity_exercise_id: activity_exercise.id, memory_game_attempt_id: attempt.id)
+    assert_response :success
+    assert_includes response.body, "XP concedido nesta partida: 11"
     delete exercise_attempt_url(attempt)
     assert_redirected_to exercise_attempts_url
     assert_not attempt.reload.active?
@@ -341,7 +350,11 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     complete_memory_attempt(replay, pair_count: 2)
 
     assert_equal 11, replay.reload.score
+    assert_equal false, replay.correct.fetch("xp_award_claimed")
     assert_equal 11, student.reload.student_stat.xp
+    get exercise_url(exercise, activity_exercise_id: activity_exercise.id, memory_game_attempt_id: replay.id)
+    assert_response :success
+    assert_includes response.body, "XP concedido nesta partida: 0"
   end
 
   test "student cannot reveal a third memory card during a pending comparison" do
@@ -547,15 +560,51 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     assert_equal 5, attempt.score
     assert_equal student.id, attempt.student_id
     assert_equal 1, attempt.correct.fetch("statuses").values.count(true)
+    assert_equal true, attempt.correct.fetch("xp_award_claimed")
     assert_equal 5, student.reload.student_stat.xp
 
     get exercise_attempt_url(attempt)
     assert_response :success
     assert_includes response.body, "1 de 2 palavras corretas"
+    assert_includes response.body, "XP concedido nesta tentativa: 5"
     assert_not_includes response.body, "APPLE"
     assert_not_includes response.body, "PEAR"
     get edit_exercise_attempt_url(attempt)
     assert_redirected_to root_url
+  end
+
+  test "crossword retries keep history but award XP only once, including after soft delete" do
+    _teacher, student, exercise, activity_exercise = create_student_crossword(points: 9)
+    post login_url, params: { role: "student", username: student.username, password: "secret123" }
+    layout = exercise.object.deep_stringify_keys
+    cells = layout.fetch("grid").fetch("cells").each_with_index.flat_map do |row, row_index|
+      row.each_with_index.filter_map do |letter, column_index|
+        [ "#{row_index}-#{column_index}", letter ] if letter.present?
+      end
+    end.to_h
+    submission_params = { exercise_attempt: { activity_exercise_id: activity_exercise.id, answer: { cells: }.to_json } }
+
+    post exercise_attempts_url, params: submission_params
+    assert_match %r{/exercise_attempts/\d+\z}, URI(response.location).path, flash[:alert]
+    first_attempt = ExerciseAttempt.order(:id).last
+    assert_equal 9, first_attempt.score
+    assert_equal true, first_attempt.correct.fetch("xp_award_claimed")
+    assert_equal 9, student.reload.student_stat.xp
+
+    first_attempt.update!(active: false)
+    post exercise_attempts_url, params: submission_params
+    second_attempt = ExerciseAttempt.order(:id).last
+
+    assert_equal 2, ExerciseAttempt.where(student:, activity_exercise:).count
+    assert_equal 9, second_attempt.score
+    assert_equal false, second_attempt.correct.fetch("xp_award_claimed")
+    assert_equal 9, student.reload.student_stat.xp
+
+    get exercise_attempt_url(second_attempt)
+    assert_response :success
+    assert_includes response.body, "XP concedido nesta tentativa: 0"
+    assert_not_includes response.body, "APPLE"
+    assert_not_includes response.body, "PEAR"
   end
 
   test "student cannot submit a crossword through an inactive exercise link" do

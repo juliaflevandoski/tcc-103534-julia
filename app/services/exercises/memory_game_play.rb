@@ -11,7 +11,14 @@ module Exercises
       end
     end
 
-    def self.start(object:, seed: Random.new_seed, points: 0)
+    def self.start(object:, seed: Random.new_seed, points: 0, attached_image_blob_ids: [])
+      validation = ExerciseContentValidator.call(
+        exercise_type: "memory_game",
+        object:,
+        attached_image_blob_ids:
+      )
+      raise ArgumentError, validation.errors.to_sentence unless validation.success?
+
       new(object:).start(seed:, points:)
     end
 

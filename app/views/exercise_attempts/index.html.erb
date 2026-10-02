@@ -1,1 +1,17 @@
-<main><div class="toolbar"><h1>Tentativas</h1><%= link_to "Nova tentativa", new_exercise_attempt_path, class: "button" %></div><table><thead><tr><th>Aluno</th><th>Exercício</th><th>Nota</th><th>Data</th><th></th></tr></thead><tbody><% @exercise_attempts.each do |attempt| %><tr><td><%= attempt.student.name %></td><td><%= attempt.activity_exercise.exercise.title %></td><td><%= attempt.score %></td><td><%= l(attempt.created_at, format: :short) %></td><td><%= link_to "Ver", attempt %> | <%= link_to "Editar", edit_exercise_attempt_path(attempt) %> | <%= button_to "Desativar", attempt, method: :delete, class: "button danger" %></td></tr><% end %></tbody></table></main>
+<main>
+	<div class="toolbar"><h1>Tentativas</h1></div>
+	<table>
+		<thead><tr><th>Aluno</th><th>Exercício</th><th>Nota</th><th>Data</th><th></th></tr></thead>
+		<tbody>
+			<% @exercise_attempts.each do |attempt| %>
+				<tr>
+					<td><%= attempt.student.name %></td>
+					<td><%= attempt.activity_exercise.exercise.title %></td>
+					<td><%= attempt.score %></td>
+					<td><%= l(attempt.created_at, format: :short) %></td>
+					<td><%= link_to "Ver", attempt %><% if current_teacher %> | <%= button_to "Desativar", attempt, method: :delete, class: "button danger" %><% end %></td>
+				</tr>
+			<% end %>
+		</tbody>
+	</table>
+</main>

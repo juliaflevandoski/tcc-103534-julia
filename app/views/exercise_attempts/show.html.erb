@@ -2,7 +2,45 @@
 	<h1>Tentativa de <%= @exercise_attempt.student.name %></h1>
 	<p>Exercício: <%= @exercise_attempt.activity_exercise.exercise.title %></p>
 	<p>Pontuação: <%= @exercise_attempt.score %></p>
-	<% if @exercise_attempt.activity_exercise.exercise.crossword? && current_student %>
+	<% if @exercise_attempt.activity_exercise.exercise.quiz? && current_student %>
+		<% feedback = @exercise_attempt.correct.fetch("questions", []) %>
+		<ol class="quiz-feedback">
+			<% feedback.each do |question| %>
+				<li>
+					<p><%= question.fetch("statement") %></p>
+					<p><%= question.fetch("correct") ? "Correta" : "Incorreta" %></p>
+					<p>Resposta correta: <%= question.fetch("correct_answer") %></p>
+				</li>
+			<% end %>
+		</ol>
+		<p>XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
+		<%= link_to "Tentar novamente", exercise_path(@exercise_attempt.activity_exercise.exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
+	<% elsif @exercise_attempt.activity_exercise.exercise.fill_blanks? && current_student %>
+		<% feedback = @exercise_attempt.correct.fetch("blanks", []) %>
+		<% answers = @exercise_attempt.answer.fetch("answers", {}) %>
+		<ol class="fill-blanks-feedback">
+			<% feedback.each_with_index do |blank, index| %>
+				<li>
+					<p>Lacuna <%= index + 1 %>: <%= blank.fetch("correct") ? "Correta" : "Incorreta" %></p>
+					<p>Sua resposta: <%= answers.fetch(blank.fetch("id"), "").presence || "(em branco)" %></p>
+					<p>Resposta correta: <%= blank.fetch("correct_answer") %></p>
+				</li>
+			<% end %>
+		</ol>
+		<p>XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
+		<%= link_to "Tentar novamente", exercise_path(@exercise_attempt.activity_exercise.exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
+	<% elsif @exercise_attempt.activity_exercise.exercise.ordering? && current_student %>
+		<% positions = @exercise_attempt.correct.fetch("positions", []) %>
+		<p><%= positions.count { |position| position.fetch("correct") } %> de <%= positions.length %> itens na posição correta</p>
+		<p>Sequência correta:</p>
+		<ol class="ordering-feedback-list">
+			<% positions.each do |position| %>
+				<li><%= position.fetch("expected_label") %></li>
+			<% end %>
+		</ol>
+		<p>XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
+		<%= link_to "Tentar novamente", exercise_path(@exercise_attempt.activity_exercise.exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
+	<% elsif @exercise_attempt.activity_exercise.exercise.crossword? && current_student %>
 		<% statuses = @exercise_attempt.correct.fetch("statuses", {}) %>
 		<% entries = @exercise_attempt.activity_exercise.exercise.object.fetch("words") %>
 		<p><%= statuses.values.count(true) %> de <%= statuses.length %> palavras corretas</p>
@@ -11,6 +49,7 @@
 				<li>Pista <%= entry.fetch("number") %>: <%= statuses[entry.fetch("id")] ? "Correta" : "Incorreta ou incompleta" %></li>
 			<% end %>
 		</ul>
+		<p>XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
 		<%= link_to "Tentar novamente", exercise_path(@exercise_attempt.activity_exercise.exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
 	<% elsif @exercise_attempt.activity_exercise.exercise.memory_game? && current_student %>
 		<% result = @exercise_attempt.answer.to_h %>
@@ -20,6 +59,9 @@
 		<p>Acertos: <%= result.fetch("matches", 0) %></p>
 		<p>Erros: <%= result.fetch("errors", 0) %></p>
 		<p>Tempo: <%= @exercise_attempt.time_spent || 0 %> segundos</p>
+		<% if result["completed"] %>
+			<p>XP concedido nesta partida: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
+		<% end %>
 		<%= link_to "Voltar ao jogo", exercise_path(@exercise_attempt.activity_exercise.exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id, memory_game_attempt_id: @exercise_attempt.id), class: "button" unless result["completed"] %>
 	<% else %>
 		<pre><%= JSON.pretty_generate(@exercise_attempt.answer) %></pre>

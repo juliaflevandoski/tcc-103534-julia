@@ -8,18 +8,25 @@ class ExercisesController < ApplicationController
 
   def show
     authorize @exercise
-    if current_student && (@exercise.crossword? || @exercise.memory_game?)
+    if current_student && (@exercise.quiz? || @exercise.fill_blanks? || @exercise.ordering? || @exercise.crossword? || @exercise.memory_game?)
       @activity_exercise = ActivityExercise.active.find_by!(id: params[:activity_exercise_id], exercise_id: @exercise.id)
       authorize @activity_exercise, :show?
     end
 
-    if current_student && @exercise.crossword?
+    if current_student && @exercise.ordering?
+      ordering = @exercise.object.deep_stringify_keys
+      @ordering_instructions = ordering.fetch("instructions", "")
+      @ordering_items = Array(ordering["items"]).shuffle
+    elsif current_student && @exercise.crossword?
       @crossword_payload = crossword_student_payload(@exercise.object)
     elsif current_student && @exercise.memory_game?
       @memory_game_attempt = load_memory_game_attempt
       @memory_game_payload = memory_game_student_payload(@memory_game_attempt) if @memory_game_attempt
     elsif current_teacher && @exercise.memory_game?
-      @memory_game_preview_deck = Exercises::MemoryGamePlay.start(object: @exercise.object).fetch("correct").fetch("deck")
+      @memory_game_preview_deck = Exercises::MemoryGamePlay.start(
+        object: @exercise.object,
+        attached_image_blob_ids: @exercise.memory_images_attachments.pluck(:blob_id)
+      ).fetch("correct").fetch("deck")
     end
   end
 
@@ -144,6 +151,7 @@ class ExercisesController < ApplicationController
     end
 
     @exercise.object = result.object
+    @exercise.memory_upload_keys = @memory_game_uploads.keys
     result.success? && @exercise.errors.empty?
   end
 

@@ -3,7 +3,7 @@ class ClassStudentsController < ApplicationController
 
   def index
     authorize ClassStudent
-    @class_students = ClassStudent.active.includes(:student, :school_class).order(:id)
+    @class_students = ClassStudent.active.joins(:school_class).where(classes: { teacher_id: current_teacher.id, active: true }).includes(:student, :school_class).order(:id)
   end
 
   def show; authorize @class_student; end
@@ -15,12 +15,18 @@ class ClassStudentsController < ApplicationController
   end
 
   def create
-    @class_student = ClassStudent.new(class_student_params)
-    authorize @class_student
+    authorize ClassStudent, :create?
+    permitted = class_student_params
+    school_class = current_teacher.school_classes.active.find(permitted[:class_id])
+    student = Student.active.find(permitted[:student_id])
+    @class_student = school_class.class_students.build(student:)
+    authorize @class_student, :create?
     return redirect_to @class_student if @class_student.save
 
     load_options
     render :new, status: :unprocessable_entity
+  rescue ActiveRecord::RecordNotFound
+    redirect_to root_path, alert: "Turma ou aluno inválido."
   end
 
   def edit
@@ -30,10 +36,17 @@ class ClassStudentsController < ApplicationController
 
   def update
     authorize @class_student
-    return redirect_to @class_student if @class_student.update(class_student_params)
+    permitted = class_student_params
+    school_class = current_teacher.school_classes.active.find(permitted[:class_id])
+    student = Student.active.find(permitted[:student_id])
+    @class_student.assign_attributes(school_class:, student:)
+    authorize @class_student
+    return redirect_to @class_student if @class_student.save
 
     load_options
     render :edit, status: :unprocessable_entity
+  rescue ActiveRecord::RecordNotFound
+    redirect_to root_path, alert: "Turma ou aluno inválido."
   end
 
   def destroy

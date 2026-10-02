@@ -2,19 +2,17 @@ class ActivitiesController < ApplicationController
   before_action :set_activity, only: %i[show edit update destroy]
 
   def index
+    return redirect_to school_classes_path if current_student
+
     authorize Activity
-    @activities = if current_teacher
-      current_teacher.activities.active.includes(:school_class, :teacher).order(:title)
-    else
-      Activity.active.published.joins(school_class: :class_students).where(classes_students: { student_id: current_student.id, active: true }).includes(:school_class, :teacher).order(:title)
-    end
+    @activities = current_teacher.activities.active.includes(:school_class, :teacher).order(:title)
   end
 
   def show
     authorize @activity
+    @activity_exercises = @activity.activity_exercises.active.ordered.includes(:exercise)
     return unless current_teacher
 
-    @activity_exercises = @activity.activity_exercises.active.ordered.includes(:exercise)
     @available_exercises = current_teacher.exercises.active.order(:title)
     @activity_exercise = @activity.activity_exercises.build(position: next_position, points: 0)
   end

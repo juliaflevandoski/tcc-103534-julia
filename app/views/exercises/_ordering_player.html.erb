@@ -1,0 +1,25 @@
+	<h1><%= exercise.title %></h1>
+	<p><%= instructions %></p>
+	<%= form_with url: exercise_attempts_path, scope: :exercise_attempt,
+		data: { controller: "ordering-player", action: "submit->ordering-player#announceOrder" } do %>
+		<%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
+		<ol class="ordering-player-list" data-ordering-player-target="list">
+			<% items.each do |item| %>
+				<li data-ordering-player-target="item" data-item-id="<%= item.fetch("id") %>" draggable="true"
+					data-action="dragstart->ordering-player#startDrag dragover->ordering-player#allowDrop drop->ordering-player#drop dragend->ordering-player#endDrag">
+					<%= hidden_field_tag "exercise_attempt[ordered_ids][]", item.fetch("id") %>
+					<span class="ordering-player-label"><%= item.fetch("label") %></span>
+					<span class="ordering-player-actions">
+						<button type="button" data-ordering-move-up data-action="ordering-player#moveUp" aria-label="Mover item para cima" title="Mover para cima">
+							<i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
+						</button>
+						<button type="button" data-ordering-move-down data-action="ordering-player#moveDown" aria-label="Mover item para baixo" title="Mover para baixo">
+							<i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
+						</button>
+					</span>
+				</li>
+			<% end %>
+		</ol>
+		<p class="ordering-player-status" data-ordering-player-target="status" aria-live="polite"></p>
+		<%= submit_tag "Enviar ordem", class: "button" %>
+	<% end %>

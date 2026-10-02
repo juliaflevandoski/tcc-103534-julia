@@ -12,6 +12,7 @@
 			<p>Acertos: <%= answer.fetch("matches", 0) %></p>
 			<p>Erros: <%= answer.fetch("errors", 0) %></p>
 			<p>Pontuação: <%= attempt.score %></p>
+			<p>XP concedido nesta partida: <%= attempt.correct["xp_award_claimed"] ? attempt.score : 0 %></p>
 			<p>Tempo: <%= attempt.time_spent || 0 %> segundos</p>
 		</section>
 	<% end %>
@@ -62,6 +63,7 @@
 			<p>Tentativas: <strong data-memory-game-target="finalAttempts"></strong></p>
 			<p>Erros: <strong data-memory-game-target="finalErrors"></strong></p>
 			<p>Pontuação: <strong data-memory-game-target="finalScore"></strong></p>
+			<p>XP concedido nesta partida: <strong data-memory-game-target="finalXp"></strong></p>
 			<p>Tempo: <strong data-memory-game-target="finalTime"></strong> segundos</p>
 			<%= form_with url: exercise_attempts_path, scope: :exercise_attempt do %>
 				<%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>

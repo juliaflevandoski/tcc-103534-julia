@@ -23,6 +23,6 @@ class ActivityPolicy < ApplicationPolicy
   private
 
   def student_can_access?
-    record.published? && record.school_class.class_students.active.exists?(student_id: user.id)
+    record.published? && record.school_class.active? && record.school_class.class_students.active.exists?(student_id: user.id)
   end
 end

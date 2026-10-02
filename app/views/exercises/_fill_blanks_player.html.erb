@@ -1,0 +1,22 @@
+	<h1><%= exercise.title %></h1>
+	<p>Complete as lacunas</p>
+	<%= form_with url: exercise_attempts_path, scope: :exercise_attempt do %>
+		<%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
+		<p class="fill-blanks-text">
+			<% blank_number = 0 %>
+			<% exercise.object.fetch("text_template").to_s.split(/(\{\{\d+\}\})/).each do |segment| %>
+				<% marker = /\A\{\{(\d+)\}\}\z/.match(segment) %>
+				<% if marker %>
+					<% blank_number += 1 %>
+					<%= text_field_tag "exercise_attempt[answers][#{marker[1]}]", nil,
+						id: "fill-blank-answer-#{marker[1]}",
+						class: "fill-blank-input",
+						autocomplete: "off",
+						aria: { label: "Resposta da lacuna #{blank_number}" } %>
+				<% else %>
+					<%= segment %>
+				<% end %>
+			<% end %>
+		</p>
+		<%= submit_tag "Enviar respostas", class: "button" %>
+	<% end %>

@@ -23,6 +23,10 @@ class ExerciseAttemptsController < ApplicationController
   def create
     return create_memory_game_attempt if memory_game_submission?
     return create_crossword_attempt if crossword_submission?
+    return create_quiz_attempt if quiz_submission?
+    return create_fill_blanks_attempt if fill_blanks_submission?
+    return create_ordering_attempt if ordering_submission?
+    return redirect_to root_path, alert: "Envio de tentativa inválido." if current_student
 
     @exercise_attempt = ExerciseAttempt.new(exercise_attempt_params)
     authorize @exercise_attempt
@@ -86,7 +90,7 @@ class ExerciseAttemptsController < ApplicationController
       time_spent = @exercise_attempt.time_spent
       if result.completed
         xp_awarded = claim_memory_game_xp!(score)
-        correct = correct.merge("xp_award_claimed" => true)
+        correct = correct.merge("xp_award_claimed" => xp_awarded)
         started_at = Time.iso8601(result.answer.fetch("started_at"))
         time_spent = [ (Time.current - started_at).to_i, 0 ].max
       end
@@ -129,7 +133,12 @@ class ExerciseAttemptsController < ApplicationController
     permitted = params.require(:exercise_attempt).permit(:activity_exercise_id)
     @activity_exercise = ActivityExercise.active.includes(:activity, :exercise).find(permitted[:activity_exercise_id])
     authorize @activity_exercise, :show?
-    game = Exercises::MemoryGamePlay.start(object: @activity_exercise.exercise.object, points: @activity_exercise.points)
+    @activity_exercise.exercise.validate!
+    game = Exercises::MemoryGamePlay.start(
+      object: @activity_exercise.exercise.object,
+      points: @activity_exercise.points,
+      attached_image_blob_ids: @activity_exercise.exercise.memory_images_attachments.pluck(:blob_id)
+    )
     @exercise_attempt = ExerciseAttempt.new(
       student: current_student,
       activity_exercise: @activity_exercise,
@@ -155,6 +164,93 @@ class ExerciseAttemptsController < ApplicationController
 
     activity_exercise_id = params.dig(:exercise_attempt, :activity_exercise_id)
     ActivityExercise.unscoped.joins(:exercise).exists?(id: activity_exercise_id, exercises: { exercise_type: Exercise.exercise_types.fetch("crossword") })
+  end
+
+  def quiz_submission?
+    return false unless current_student
+
+    activity_exercise_id = params.dig(:exercise_attempt, :activity_exercise_id)
+    ActivityExercise.unscoped.joins(:exercise).exists?(
+      id: activity_exercise_id,
+      exercises: { exercise_type: Exercise.exercise_types.fetch("quiz") }
+    )
+  end
+
+  def create_quiz_attempt
+    permitted = params.require(:exercise_attempt).permit(:activity_exercise_id, answers: {})
+    @activity_exercise = ActivityExercise.active.includes(:activity, :exercise).find(permitted[:activity_exercise_id])
+    authorize @activity_exercise, :show?
+    result = Exercises::QuizSubmission.call(
+      activity_exercise: @activity_exercise,
+      student: current_student,
+      answers: permitted[:answers] || {}
+    )
+    @exercise_attempt = result.attempt
+    redirect_to @exercise_attempt
+  rescue Exercises::AttemptValidity::BlankResponse => error
+    redirect_to exercise_path(@activity_exercise.exercise, activity_exercise_id: @activity_exercise.id), alert: error.message
+  rescue ActiveRecord::RecordNotFound, Pundit::NotAuthorizedError
+    redirect_to root_path, alert: "Não foi possível enviar este Quiz."
+  rescue ActiveRecord::RecordInvalid
+    redirect_to exercise_path(@activity_exercise.exercise, activity_exercise_id: @activity_exercise.id), alert: "Não foi possível registrar suas respostas."
+  end
+
+  def fill_blanks_submission?
+    return false unless current_student
+
+    activity_exercise_id = params.dig(:exercise_attempt, :activity_exercise_id)
+    ActivityExercise.unscoped.joins(:exercise).exists?(
+      id: activity_exercise_id,
+      exercises: { exercise_type: Exercise.exercise_types.fetch("fill_blanks") }
+    )
+  end
+
+  def create_fill_blanks_attempt
+    permitted = params.require(:exercise_attempt).permit(:activity_exercise_id, answers: {})
+    @activity_exercise = ActivityExercise.active.includes(:activity, :exercise).find(permitted[:activity_exercise_id])
+    authorize @activity_exercise, :show?
+    result = Exercises::FillBlanksSubmission.call(
+      activity_exercise: @activity_exercise,
+      student: current_student,
+      answers: permitted[:answers] || {}
+    )
+    @exercise_attempt = result.attempt
+    redirect_to @exercise_attempt
+  rescue Exercises::AttemptValidity::BlankResponse => error
+    redirect_to exercise_path(@activity_exercise.exercise, activity_exercise_id: @activity_exercise.id), alert: error.message
+  rescue ActiveRecord::RecordNotFound, Pundit::NotAuthorizedError
+    redirect_to root_path, alert: "Não foi possível enviar este exercício."
+  rescue ActiveRecord::RecordInvalid
+    redirect_to exercise_path(@activity_exercise.exercise, activity_exercise_id: @activity_exercise.id), alert: "Não foi possível registrar suas respostas."
+  end
+
+  def ordering_submission?
+    return false unless current_student
+
+    activity_exercise_id = params.dig(:exercise_attempt, :activity_exercise_id)
+    ActivityExercise.unscoped.joins(:exercise).exists?(
+      id: activity_exercise_id,
+      exercises: { exercise_type: Exercise.exercise_types.fetch("ordering") }
+    )
+  end
+
+  def create_ordering_attempt
+    permitted = params.require(:exercise_attempt).permit(:activity_exercise_id, ordered_ids: [])
+    @activity_exercise = ActivityExercise.active.includes(:activity, :exercise).find(permitted[:activity_exercise_id])
+    authorize @activity_exercise, :show?
+    result = Exercises::OrderingSubmission.call(
+      activity_exercise: @activity_exercise,
+      student: current_student,
+      ordered_ids: permitted[:ordered_ids] || []
+    )
+    @exercise_attempt = result.attempt
+    redirect_to @exercise_attempt
+  rescue Exercises::AttemptValidity::BlankResponse => error
+    redirect_to exercise_path(@activity_exercise.exercise, activity_exercise_id: @activity_exercise.id), alert: error.message
+  rescue ActiveRecord::RecordNotFound, Pundit::NotAuthorizedError
+    redirect_to root_path, alert: "Não foi possível enviar esta ordenação."
+  rescue ActiveRecord::RecordInvalid
+    redirect_to exercise_path(@activity_exercise.exercise, activity_exercise_id: @activity_exercise.id), alert: "Não foi possível registrar sua resposta."
   end
 
   def claim_memory_game_xp!(score)
@@ -191,26 +287,18 @@ class ExerciseAttemptsController < ApplicationController
 
     answer = parse_crossword_answer(permitted[:answer])
     answer = sanitize_crossword_answer(@activity_exercise.exercise.object, answer)
-    result = Exercises::CrosswordGrader.call(
-      layout: @activity_exercise.exercise.object,
-      answer:,
-      points: @activity_exercise.points
-    )
-    @exercise_attempt = ExerciseAttempt.new(
-      student: current_student,
+    result = Exercises::CrosswordSubmission.call(
       activity_exercise: @activity_exercise,
+      student: current_student,
       answer:,
-      correct: result.correct_snapshot,
-      score: result.score,
       time_spent: permitted[:time_spent]
     )
+    @exercise_attempt = result.attempt
     authorize @exercise_attempt
 
-    ExerciseAttempt.transaction do
-      @exercise_attempt.save!
-      update_student_xp(result.score)
-    end
     redirect_to @exercise_attempt
+  rescue Exercises::AttemptValidity::BlankResponse => error
+    redirect_to exercise_path(@activity_exercise.exercise, activity_exercise_id: @activity_exercise.id), alert: error.message
   rescue JSON::ParserError, ActiveRecord::RecordNotFound, Pundit::NotAuthorizedError
     redirect_to root_path, alert: "Não foi possível enviar esta cruzadinha."
   rescue ActiveRecord::RecordInvalid
@@ -235,15 +323,6 @@ class ExerciseAttemptsController < ApplicationController
     { "cells" => cells }
   end
 
-  def update_student_xp(score)
-    return unless score.positive?
-
-    student_stat = StudentStat.find_or_create_by!(student: current_student)
-    student_stat.with_lock do
-      student_stat.update!(xp: student_stat.xp + score)
-    end
-  end
-
   def set_exercise_attempt
     @exercise_attempt = ExerciseAttempt.active.find(params[:id])
   end
@@ -254,8 +333,7 @@ class ExerciseAttemptsController < ApplicationController
   end
 
   def exercise_attempt_params
-    permitted = params.require(:exercise_attempt).permit(:student_id, :activity_exercise_id, :answer, :correct,
-                                                         :score, :time_spent)
+    permitted = params.require(:exercise_attempt).permit(:activity_exercise_id, :answer, :time_spent)
     permitted[:answer] = JSON.parse(permitted[:answer]) if permitted[:answer].is_a?(String)
     permitted[:correct] = JSON.parse(permitted[:correct]) if permitted[:correct].is_a?(String)
     permitted

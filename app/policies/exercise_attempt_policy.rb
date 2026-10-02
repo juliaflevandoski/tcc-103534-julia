@@ -11,18 +11,25 @@ class ExerciseAttemptPolicy < ApplicationPolicy
     student?
   end
 
-  alias new? create?
+  def new?
+    false
+  end
 
   def memory_game_turn?
     owner? && record.activity_exercise.exercise.memory_game?
   end
 
   def update?
-    owner? && !crossword_attempt?
+    false
   end
 
-  alias edit? update?
-  alias destroy? update?
+  def edit?
+    false
+  end
+
+  def destroy?
+    owner? || teacher_owns_activity?
+  end
 
   private
 
@@ -32,9 +39,5 @@ class ExerciseAttemptPolicy < ApplicationPolicy
 
   def teacher_owns_activity?
     teacher? && record.activity_exercise.activity.teacher_id == user.id
-  end
-
-  def crossword_attempt?
-    record.activity_exercise.exercise.crossword?
   end
 end

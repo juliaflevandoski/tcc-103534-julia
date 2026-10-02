@@ -6,7 +6,9 @@ class ExerciseAttemptTest < ActiveSupport::TestCase
     student = Student.create!(name: "Bia", username: "bia", email: "bia@example.com", password: "secret123")
     school_class = SchoolClass.create!(teacher:, name: "História")
     activity = Activity.create!(school_class:, title: "Aula 1")
-    exercise = Exercise.create!(teacher:, exercise_type: :quiz, object: { "question" => "2+2" })
+    exercise = Exercise.create!(teacher:, exercise_type: :quiz, object: {
+      "questions" => [ { "question_type" => "short_answer", "statement" => "Quanto é 2 + 2?", "correct_answer" => "4" } ]
+    })
     link = ActivityExercise.create!(activity:, exercise:, position: 1, points: 10)
 
     first = ExerciseAttempt.create!(student:, activity_exercise: link, answer: { "value" => 4 }, correct: { "value" => 4 })

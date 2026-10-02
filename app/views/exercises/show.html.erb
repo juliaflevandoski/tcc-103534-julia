@@ -1,5 +1,11 @@
 <main>
-	<% if @exercise.crossword? && current_student %>
+	<% if @exercise.quiz? && current_student %>
+		<%= render "quiz_player", exercise: @exercise, activity_exercise: @activity_exercise %>
+	<% elsif @exercise.fill_blanks? && current_student %>
+		<%= render "fill_blanks_player", exercise: @exercise, activity_exercise: @activity_exercise %>
+	<% elsif @exercise.ordering? && current_student %>
+		<%= render "ordering_player", exercise: @exercise, activity_exercise: @activity_exercise, instructions: @ordering_instructions, items: @ordering_items %>
+	<% elsif @exercise.crossword? && current_student %>
 		<%= render "crossword_player", exercise: @exercise, activity_exercise: @activity_exercise, crossword: @crossword_payload %>
 	<% elsif @exercise.crossword? %>
 		<%= render "crossword_preview", exercise: @exercise, crossword: @exercise.object %>

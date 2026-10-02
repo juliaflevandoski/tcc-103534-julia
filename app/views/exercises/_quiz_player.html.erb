@@ -1,0 +1,35 @@
+	<h1><%= exercise.title %></h1>
+	<p>Quiz</p>
+	<%= form_with url: exercise_attempts_path, scope: :exercise_attempt do %>
+		<%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
+		<ol class="quiz-questions">
+			<% exercise.object.fetch("questions").each_with_index do |question, question_index| %>
+				<li>
+					<fieldset>
+						<legend><%= question.fetch("statement") %></legend>
+						<% case question.fetch("question_type") %>
+						<% when "multiple_choice" %>
+							<% question.fetch("options").each_with_index do |option, option_index| %>
+								<% option_id = "quiz-question-#{question_index}-option-#{option_index}" %>
+								<div class="quiz-answer-option">
+									<%= radio_button_tag "exercise_attempt[answers][#{question_index}]", option.fetch("id"), false, id: option_id %>
+									<%= label_tag option_id, option.fetch("text") %>
+								</div>
+							<% end %>
+						<% when "true_false" %>
+							<% [["true", "Verdadeiro"], ["false", "Falso"]].each do |value, label| %>
+								<% option_id = "quiz-question-#{question_index}-#{value}" %>
+								<div class="quiz-answer-option">
+									<%= radio_button_tag "exercise_attempt[answers][#{question_index}]", value, false, id: option_id %>
+									<%= label_tag option_id, label %>
+								</div>
+							<% end %>
+						<% when "short_answer" %>
+							<%= text_field_tag "exercise_attempt[answers][#{question_index}]", nil, id: "quiz-question-#{question_index}-answer", autocomplete: "off" %>
+						<% end %>
+					</fieldset>
+				</li>
+			<% end %>
+		</ol>
+		<%= submit_tag "Enviar respostas", class: "button" %>
+	<% end %>

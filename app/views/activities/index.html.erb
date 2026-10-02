@@ -1,1 +1,21 @@
-<main><div class="toolbar"><h1>Aulas</h1><%= link_to "Nova aula", new_activity_path, class: "button" %></div><table><thead><tr><th>Título</th><th>Turma</th><th>Status</th><th></th></tr></thead><tbody><% @activities.each do |activity| %><tr><td><%= activity.title %></td><td><%= activity.school_class.name %></td><td><%= activity.published? ? "Publicada" : "Rascunho" %></td><td><%= link_to "Ver", activity %> | <%= link_to "Editar", edit_activity_path(activity) %> | <%= button_to "Desativar", activity, method: :delete, class: "button danger" %></td></tr><% end %></tbody></table></main>
+<main>
+	<div class="toolbar">
+		<h1>Aulas</h1>
+		<% if current_teacher %><%= link_to "Nova aula", new_activity_path, class: "button" %><% end %>
+	</div>
+	<table>
+		<thead><tr><th>Título</th><th>Turma</th><th>Status</th><% if current_teacher %><th></th><% end %></tr></thead>
+		<tbody>
+			<% @activities.each do |activity| %>
+				<tr>
+					<td><%= activity.title %></td>
+					<td><%= activity.school_class.name %></td>
+					<td><%= activity.published? ? "Publicada" : "Rascunho" %></td>
+					<% if current_teacher %>
+						<td><%= link_to "Ver", activity %> | <%= link_to "Editar", edit_activity_path(activity) %> | <%= button_to "Desativar", activity, method: :delete, class: "button danger" %></td>
+					<% end %>
+				</tr>
+			<% end %>
+		</tbody>
+	</table>
+</main>

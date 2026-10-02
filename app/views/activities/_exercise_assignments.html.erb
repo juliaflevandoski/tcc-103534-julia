@@ -13,12 +13,24 @@
   <% end %>
 
   <h2>Exercícios na aula</h2>
-  <table class="exercise-table" data-controller="sortable-exercises" data-sortable-exercises-url-value="<%= reorder_activity_exercises_path(activity) %>">
+  <% if current_teacher %>
+    <table class="exercise-table" data-controller="sortable-exercises" data-sortable-exercises-url-value="<%= reorder_activity_exercises_path(activity) %>">
+  <% else %>
+    <table class="exercise-table">
+  <% end %>
     <thead><tr><th>Posição</th><th>Exercício</th><th>Pontos</th><% if current_teacher %><th>Ações</th><% end %></tr></thead>
-    <tbody data-sortable-exercises-target="list">
+    <% if current_teacher %>
+      <tbody data-sortable-exercises-target="list">
+    <% else %>
+      <tbody>
+    <% end %>
     <% activity_exercises.each do |activity_exercise| %>
-      <tr draggable="true" data-id="<%= activity_exercise.id %>">
-        <td><i class="fa-solid fa-grip-vertical" aria-hidden="true" title="Arrastar para reordenar"></i> <span data-position><%= activity_exercise.position %></span></td>
+      <% if current_teacher %>
+        <tr draggable="true" data-id="<%= activity_exercise.id %>">
+      <% else %>
+        <tr>
+      <% end %>
+        <td><% if current_teacher %><i class="fa-solid fa-grip-vertical" aria-hidden="true" title="Arrastar para reordenar"></i><% end %> <span data-position><%= activity_exercise.position %></span></td>
         <td><%= link_to activity_exercise.exercise.title, exercise_path(activity_exercise.exercise, activity_exercise_id: activity_exercise.id) %></td>
         <td><%= activity_exercise.points %></td>
         <% if current_teacher %><td><%= button_to "Remover", activity_exercise_path(activity_exercise), method: :delete, class: "button danger" %></td><% end %>

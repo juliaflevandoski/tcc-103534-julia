@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = [
     "card", "status", "attempts", "matches", "errors", "score", "completion",
-    "finalMatches", "finalHits", "finalAttempts", "finalErrors", "finalScore", "finalTime"
+    "finalMatches", "finalHits", "finalAttempts", "finalErrors", "finalScore", "finalXp", "finalTime"
   ]
 
   static values = { turnUrl: String }
@@ -134,6 +134,7 @@ export default class extends Controller {
     this.finalAttemptsTarget.textContent = payload.attempts
     this.finalErrorsTarget.textContent = payload.errors
     this.finalScoreTarget.textContent = payload.score
+    this.finalXpTarget.textContent = payload.xp_awarded ? payload.score : 0
     this.finalTimeTarget.textContent = payload.time_spent
     this.statusTarget.textContent = payload.xp_awarded ? "Atividade concluída. XP atualizado." : "Atividade concluída."
     this.cardTargets.forEach((card) => { card.disabled = true })
