@@ -1,7 +1,8 @@
 	<h1><%= exercise.title %></h1>
 	<p><%= instructions %></p>
 	<%= form_with url: exercise_attempts_path, scope: :exercise_attempt,
-		data: { controller: "ordering-player", action: "submit->ordering-player#announceOrder" } do %>
+		data: { controller: "ordering-player", action: "submit->ordering-player#announceOrder",
+			ordering_player_expected_ids_value: items.map { |item| item.fetch("id") }.to_json } do %>
 		<%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
 		<ol class="ordering-player-list" data-ordering-player-target="list">
 			<% items.each do |item| %>

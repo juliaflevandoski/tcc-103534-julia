@@ -2,9 +2,11 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   static targets = ["list", "item", "status"]
+  static values = { expectedIds: Array }
 
   connect() {
     this.updateButtons()
+    this.updateStatus()
   }
 
   moveUp(event) {
@@ -57,13 +59,33 @@ export default class extends Controller {
     this.draggedItem = null
   }
 
-  announceOrder() {
+  announceOrder(event) {
+    if (!this.completeOrder()) {
+      event.preventDefault()
+      this.statusTarget.textContent = `A sequência está incompleta. Confira os ${this.expectedIdsValue.length} itens antes de enviar.`
+      return
+    }
+
     this.statusTarget.textContent = "Enviando a sequência escolhida."
   }
 
   orderChanged() {
     this.updateButtons()
-    this.statusTarget.textContent = "Ordem atualizada."
+    this.updateStatus()
+  }
+
+  updateStatus() {
+    this.statusTarget.textContent = this.completeOrder() ?
+      "Todos os itens estão organizados e podem ser enviados." :
+      `A sequência está incompleta. Confira os ${this.expectedIdsValue.length} itens.`
+  }
+
+  completeOrder() {
+    const actualIds = this.itemTargets.map((item) => item.dataset.itemId)
+    const expectedIds = this.expectedIdsValue
+    return actualIds.length === expectedIds.length &&
+      new Set(actualIds).size === expectedIds.length &&
+      expectedIds.every((itemId) => actualIds.includes(itemId))
   }
 
   updateButtons() {

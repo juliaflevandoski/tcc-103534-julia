@@ -8,7 +8,9 @@ class StudentQuizAttemptTest < ActionDispatch::IntegrationTest
     get exercise_url(exercise, activity_exercise_id: activity_exercise.id)
 
     assert_response :success
-    assert_select "form[action='#{exercise_attempts_path}']"
+    assert_select "form[action='#{exercise_attempts_path}'][data-controller='required-responses']"
+    assert_select "input[required][name='exercise_attempt[answers][0]']", count: 2
+    assert_select "input[required][name='exercise_attempt[answers][2]']", count: 1
     assert_select "input[name='exercise_attempt[answers][0]']", count: 2
     assert_select "input[type='text'][name='exercise_attempt[answers][2]']", count: 1
     assert_select "input[name='exercise_attempt[correct]']", count: 0
@@ -58,6 +60,22 @@ class StudentQuizAttemptTest < ActionDispatch::IntegrationTest
     assert_equal 10, second_attempt.score
     assert_equal false, second_attempt.correct.fetch("xp_award_claimed")
     assert_equal 10, student.reload.student_stat.xp
+  end
+
+  test "student cannot submit a partially answered quiz" do
+    _teacher, student, exercise, activity_exercise = create_student_quiz(points: 10)
+    post login_url, params: { role: "student", username: student.username, password: "secret123" }
+
+    assert_no_difference("ExerciseAttempt.count") do
+      post exercise_attempts_url, params: {
+        exercise_attempt: { activity_exercise_id: activity_exercise.id, answers: { "0" => "four", "1" => "false" } }
+      }
+    end
+
+    assert_redirected_to exercise_url(exercise, activity_exercise_id: activity_exercise.id)
+    assert_equal "Preencha todas as respostas obrigatórias antes de enviar a atividade.", flash[:alert]
+    assert_not StudentStat.exists?(student_id: student.id)
+    assert_nil ActivityResults.official_attempt(activity_exercise:, student:)
   end
 
   test "student cannot submit a quiz outside an enrolled published class" do

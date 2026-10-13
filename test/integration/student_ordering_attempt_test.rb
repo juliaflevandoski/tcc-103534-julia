@@ -8,7 +8,7 @@ class StudentOrderingAttemptTest < ActionDispatch::IntegrationTest
     get exercise_url(exercise, activity_exercise_id: activity_exercise.id)
 
     assert_response :success
-    assert_select "form[data-controller='ordering-player']"
+    assert_select "form[data-controller='ordering-player'][data-ordering-player-expected-ids-value]"
     assert_select "ol.ordering-player-list > li[data-ordering-player-target='item']", count: 4
     assert_select "input[name='exercise_attempt[ordered_ids][]']", count: 4
     assert_select "button[aria-label='Mover item para cima']", count: 4
@@ -62,6 +62,24 @@ class StudentOrderingAttemptTest < ActionDispatch::IntegrationTest
     assert_equal 10, second_attempt.score
     assert_equal false, second_attempt.correct.fetch("xp_award_claimed")
     assert_equal 10, student.reload.student_stat.xp
+  end
+
+  test "server rejects missing duplicate and unknown ordering IDs" do
+    _teacher, student, exercise, activity_exercise = create_student_ordering(points: 10)
+    post login_url, params: { role: "student", username: student.username, password: "secret123" }
+
+    [ %w[item-1 item-2 item-3], %w[item-1 item-1 item-3 item-4], %w[item-1 item-2 item-3 unknown] ].each do |ordered_ids|
+      assert_no_difference("ExerciseAttempt.count") do
+        post exercise_attempts_url, params: {
+          exercise_attempt: { activity_exercise_id: activity_exercise.id, ordered_ids: }
+        }
+      end
+      assert_redirected_to exercise_url(exercise, activity_exercise_id: activity_exercise.id)
+      assert_equal "Preencha todas as respostas obrigatórias antes de enviar a atividade.", flash[:alert]
+    end
+
+    assert_not StudentStat.exists?(student_id: student.id)
+    assert_nil ActivityResults.official_attempt(activity_exercise:, student:)
   end
 
   test "student cannot submit ordering from an unrelated class" do

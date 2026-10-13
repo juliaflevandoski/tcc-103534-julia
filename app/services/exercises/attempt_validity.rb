@@ -3,9 +3,9 @@ module Exercises
     class BlankResponse < StandardError; end
 
     def self.ensure_response!(exercise:, answer:)
-      return if response_present?(exercise:, answer:)
+      return if response_complete?(exercise:, answer:)
 
-      raise BlankResponse, "Responda à atividade antes de enviá-la."
+      raise BlankResponse, "Preencha todas as respostas obrigatórias antes de enviar a atividade."
     end
 
     def self.valid_attempt?(attempt)
@@ -25,26 +25,26 @@ module Exercises
       if exercise.memory_game?
         valid_memory_game_attempt?(attempt, answer, correct)
       else
-        response_present?(exercise:, answer:) && valid_grading_snapshot?(exercise, correct)
+        response_complete?(exercise:, answer:) && valid_grading_snapshot?(exercise, correct)
       end
     rescue ActiveRecord::RecordNotFound, TypeError, ArgumentError
       false
     end
 
-    def self.response_present?(exercise:, answer:)
+    def self.response_complete?(exercise:, answer:)
       object = stringify(exercise.object)
       submitted = stringify(answer)
       return false unless object.is_a?(Hash) && submitted.is_a?(Hash)
 
       case exercise.exercise_type
       when "quiz"
-        quiz_response_present?(object, submitted)
+        quiz_response_complete?(object, submitted)
       when "fill_blanks"
-        fill_blanks_response_present?(object, submitted)
+        fill_blanks_response_complete?(object, submitted)
       when "ordering"
-        ordering_response_present?(object, submitted)
+        ordering_response_complete?(object, submitted)
       when "crossword"
-        crossword_response_present?(object, submitted)
+        crossword_response_complete?(object, submitted)
       else
         false
       end
@@ -63,12 +63,12 @@ module Exercises
     end
     private_class_method :stringify
 
-    def self.quiz_response_present?(object, submitted)
+    def self.quiz_response_complete?(object, submitted)
       answers = submitted["answers"]
       questions = object["questions"]
-      return false unless answers.is_a?(Hash) && questions.is_a?(Array)
+      return false unless answers.is_a?(Hash) && questions.is_a?(Array) && questions.any?
 
-      questions.each_with_index.any? do |question, index|
+      questions.each_with_index.all? do |question, index|
         next false unless question.is_a?(Hash)
 
         value = answers[index.to_s]
@@ -84,27 +84,29 @@ module Exercises
         end
       end
     end
-    private_class_method :quiz_response_present?
+    private_class_method :quiz_response_complete?
 
-    def self.fill_blanks_response_present?(object, submitted)
+    def self.fill_blanks_response_complete?(object, submitted)
       answers = submitted["answers"]
       return false unless answers.is_a?(Hash)
 
       blank_ids = object.fetch("text_template", "").to_s.scan(/\{\{(\d+)\}\}/).flatten.uniq
-      blank_ids.any? { |blank_id| answers[blank_id].is_a?(String) && answers[blank_id].present? }
+      blank_ids.any? && blank_ids.all? { |blank_id| answers[blank_id].is_a?(String) && answers[blank_id].present? }
     end
-    private_class_method :fill_blanks_response_present?
+    private_class_method :fill_blanks_response_complete?
 
-    def self.ordering_response_present?(object, submitted)
+    def self.ordering_response_complete?(object, submitted)
       ordered_ids = submitted["ordered_ids"]
       return false unless ordered_ids.is_a?(Array)
 
       valid_ids = Array(object["items"]).filter_map { |item| item["id"] if item.is_a?(Hash) }
-      ordered_ids.any? { |item_id| item_id.is_a?(String) && valid_ids.include?(item_id) }
+      valid_ids.any? && ordered_ids.length == valid_ids.length &&
+        ordered_ids.all? { |item_id| item_id.is_a?(String) } &&
+        ordered_ids.uniq.length == valid_ids.length && ordered_ids.sort == valid_ids.sort
     end
-    private_class_method :ordering_response_present?
+    private_class_method :ordering_response_complete?
 
-    def self.crossword_response_present?(object, submitted)
+    def self.crossword_response_complete?(object, submitted)
       submitted_cells = submitted.dig("cells")
       grid = object.dig("grid", "cells")
       return false unless submitted_cells.is_a?(Hash) && grid.is_a?(Array)
@@ -112,12 +114,12 @@ module Exercises
       open_cells = grid.each_with_index.flat_map do |row, row_index|
         row.each_with_index.filter_map { |cell, column_index| "#{row_index}-#{column_index}" if cell.present? }
       end
-      open_cells.any? do |cell_id|
+      open_cells.any? && open_cells.all? do |cell_id|
         value = submitted_cells[cell_id]
         value.is_a?(String) && normalize_crossword_letter(value).present?
       end
     end
-    private_class_method :crossword_response_present?
+    private_class_method :crossword_response_complete?
 
     def self.normalize_crossword_letter(value)
       value.unicode_normalize(:nfkd).gsub(/\p{Mn}/, "").upcase.gsub(/[^A-Z]/, "")[0].to_s
@@ -156,8 +158,17 @@ module Exercises
 
       deck = correct["deck"]
       return false unless deck.is_a?(Array) && deck.any?
+      return false unless deck.all? { |card| card.is_a?(Hash) && card["id"].is_a?(String) && card["pair_id"].is_a?(String) }
 
-      pair_ids = deck.filter_map { |card| card["pair_id"] if card.is_a?(Hash) }
+      card_ids = deck.map { |card| card.fetch("id") }
+      return false unless card_ids.uniq.length == card_ids.length
+
+      matched_card_ids = answer["matched_card_ids"]
+      return false unless matched_card_ids.is_a?(Array) && matched_card_ids.all? { |card_id| card_id.is_a?(String) }
+      return false unless matched_card_ids.uniq.sort == card_ids.sort
+      return false unless answer["selected_card_id"].nil? && answer["pending_reset_ids"].blank?
+
+      pair_ids = deck.map { |card| card.fetch("pair_id") }
       pair_counts = pair_ids.tally
       total_pairs = pair_counts.length
       total_pairs.positive? && pair_counts.values.all? { |count| count == 2 } &&

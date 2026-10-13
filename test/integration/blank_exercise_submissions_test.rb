@@ -9,7 +9,10 @@ class BlankExerciseSubmissionsTest < ActionDispatch::IntegrationTest
     school_class.class_students.create!(student: @student, active: true)
     @links = {
       quiz: create_link(teacher, activity, :quiz, {
-        "questions" => [ { "question_type" => "short_answer", "statement" => "Responda.", "correct_answer" => "Sim" } ]
+        "questions" => [
+          { "question_type" => "short_answer", "statement" => "Responda.", "correct_answer" => "Sim" },
+          { "question_type" => "true_false", "statement" => "Confirme.", "correct_option_ids" => [ "true" ] }
+        ]
       }),
       fill_blanks: create_link(teacher, activity, :fill_blanks, {
         "text_template" => "{{1}} e {{2}}", "blanks" => { "1" => "um", "2" => "dois" }
@@ -25,23 +28,25 @@ class BlankExerciseSubmissionsTest < ActionDispatch::IntegrationTest
     post login_url, params: { role: "student", username: @student.username, password: "secret123" }
   end
 
-  test "blank Quiz, Fill Blanks, Ordering, and Crossword submissions are rejected without persistence" do
+  test "blank or incomplete Quiz, Fill Blanks, Ordering, and Crossword submissions are rejected without persistence" do
     submissions = {
-      quiz: { answers: { "0" => "   " } },
-      fill_blanks: { answers: { "1" => "", "2" => " " } },
-      ordering: { ordered_ids: [] },
-      crossword: { answer: { cells: {} }.to_json }
+      quiz: [ { answers: { "0" => "   " } }, { answers: { "0" => "wrong answer" } } ],
+      fill_blanks: [ { answers: { "1" => "", "2" => " " } }, { answers: { "1" => "wrong answer", "2" => " " } } ],
+      ordering: [ { ordered_ids: [] }, { ordered_ids: [ "a" ] }, { ordered_ids: %w[a a] }, { ordered_ids: %w[a unknown] } ],
+      crossword: [ { answer: { cells: {} }.to_json }, { answer: partial_crossword_answer.to_json } ]
     }
 
-    submissions.each do |exercise_type, payload|
+    submissions.each do |exercise_type, payloads|
       activity_exercise = @links.fetch(exercise_type)
-      assert_no_difference("ExerciseAttempt.count") do
-        post exercise_attempts_url, params: {
-          exercise_attempt: { activity_exercise_id: activity_exercise.id }.merge(payload)
-        }
+      payloads.each do |payload|
+        assert_no_difference("ExerciseAttempt.count") do
+          post exercise_attempts_url, params: {
+            exercise_attempt: { activity_exercise_id: activity_exercise.id }.merge(payload)
+          }
+        end
+        assert_redirected_to exercise_url(activity_exercise.exercise, activity_exercise_id: activity_exercise.id)
+        assert_equal "Preencha todas as respostas obrigatórias antes de enviar a atividade.", flash[:alert]
       end
-      assert_redirected_to exercise_url(activity_exercise.exercise, activity_exercise_id: activity_exercise.id)
-      assert_equal "Responda à atividade antes de enviá-la.", flash[:alert]
     end
 
     assert_not StudentStat.exists?(student_id: @student.id)
@@ -62,5 +67,15 @@ class BlankExerciseSubmissionsTest < ActionDispatch::IntegrationTest
     )
     exercise = teacher.exercises.create!(title: "crossword", exercise_type: :crossword, object: result.object)
     activity.activity_exercises.create!(exercise:, position: activity.activity_exercises.active.maximum(:position).to_i + 1, points: 10)
+  end
+
+  def partial_crossword_answer
+    grid = @links.fetch(:crossword).exercise.object.fetch("grid").fetch("cells")
+    cell_id, cell_value = grid.each_with_index.flat_map do |row, row_index|
+      row.each_with_index.filter_map do |value, column_index|
+        [ [ "#{row_index}-#{column_index}", value ] ] if value.present?
+      end
+    end.first
+    { "cells" => { cell_id => cell_value } }
   end
 end

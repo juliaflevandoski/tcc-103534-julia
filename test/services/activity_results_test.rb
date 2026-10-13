@@ -18,7 +18,7 @@ class ActivityResultsTest < ActiveSupport::TestCase
     first = Exercises::QuizSubmission.call(
       activity_exercise:,
       student: @student,
-      answers: { "0" => "a" }
+      answers: { "0" => "a", "1" => "wrong" }
     ).attempt
     second = Exercises::QuizSubmission.call(
       activity_exercise:,
@@ -35,6 +35,18 @@ class ActivityResultsTest < ActiveSupport::TestCase
     assert_equal 10, second.score
     assert_equal 0, third.score
     assert_equal first, ActivityResults.official_attempt(activity_exercise:, student: @student)
+    xp_before_incomplete_submission = @student.reload.student_stat.xp
+
+    assert ActivityResults.lesson_completed?(activity: @activity, student: @student)
+    assert_no_difference("ExerciseAttempt.count") do
+      assert_raises(Exercises::AttemptValidity::BlankResponse) do
+        Exercises::QuizSubmission.call(activity_exercise:, student: @student, answers: { "0" => "a" })
+      end
+    end
+
+    assert_equal first, ActivityResults.official_attempt(activity_exercise:, student: @student)
+    assert ActivityResults.lesson_completed?(activity: @activity, student: @student)
+    assert_equal xp_before_incomplete_submission, @student.reload.student_stat.xp
 
     first.update!(active: false)
     assert_equal first, ActivityResults.official_attempt(activity_exercise:, student: @student)
@@ -45,7 +57,7 @@ class ActivityResultsTest < ActiveSupport::TestCase
     first_created = Exercises::QuizSubmission.call(
       activity_exercise:,
       student: @student,
-      answers: { "0" => "a" }
+      answers: { "0" => "a", "1" => "wrong" }
     ).attempt
     second_created = Exercises::QuizSubmission.call(
       activity_exercise:,
@@ -82,21 +94,69 @@ class ActivityResultsTest < ActiveSupport::TestCase
     assert_not StudentStat.exists?(student_id: @student.id)
   end
 
-  test "partial responses are valid official attempts even when their score is zero" do
+  test "partial responses are rejected and complete incorrect responses remain official" do
     activity_exercise = create_fill_blanks_link
+    assert_no_difference("ExerciseAttempt.count") do
+      assert_raises(Exercises::AttemptValidity::BlankResponse) do
+        Exercises::FillBlanksSubmission.call(
+          activity_exercise:,
+          student: @student,
+          answers: { "1" => "not the expected answer", "2" => "" }
+        )
+      end
+    end
+    assert_not StudentStat.exists?(student_id: @student.id)
+    assert_nil ActivityResults.official_attempt(activity_exercise:, student: @student)
+
     submission = Exercises::FillBlanksSubmission.call(
       activity_exercise:,
       student: @student,
-      answers: { "1" => "not the expected answer", "2" => "" }
+      answers: { "1" => "not the expected answer", "2" => "also incorrect" }
     )
-
     assert_equal 0, submission.attempt.score
     assert_equal submission.attempt, ActivityResults.official_attempt(activity_exercise:, student: @student)
   end
 
+  test "legacy partial attempts remain in history but do not become official" do
+    activity_exercise = create_fill_blanks_link
+    partial_attempt = ExerciseAttempt.create!(
+      student: @student,
+      activity_exercise:,
+      answer: { "answers" => { "1" => "resposta parcial" } },
+      correct: { "blanks" => [ { "id" => "1", "correct" => false }, { "id" => "2", "correct" => false } ] },
+      score: 0
+    )
+
+    assert_nil ActivityResults.official_attempt(activity_exercise:, student: @student)
+
+    complete_attempt = Exercises::FillBlanksSubmission.call(
+      activity_exercise:,
+      student: @student,
+      answers: { "1" => "incorreta", "2" => "também incorreta" }
+    ).attempt
+
+    assert_equal complete_attempt, ActivityResults.official_attempt(activity_exercise:, student: @student)
+    assert_equal 2, ExerciseAttempt.where(student: @student, activity_exercise:).count
+    assert_equal({ "answers" => { "1" => "resposta parcial" } }, partial_attempt.reload.answer)
+  end
+
+  test "ordering rejects missing duplicate and unknown item IDs before persistence" do
+    activity_exercise = create_ordering_link
+
+    [ %w[item-1], %w[item-1 item-1], %w[item-1 unknown] ].each do |ordered_ids|
+      assert_no_difference("ExerciseAttempt.count") do
+        assert_raises(Exercises::AttemptValidity::BlankResponse) do
+          Exercises::OrderingSubmission.call(activity_exercise:, student: @student, ordered_ids:)
+        end
+      end
+    end
+
+    assert_not StudentStat.exists?(student_id: @student.id)
+  end
+
   test "average uses only enrolled students' official attempts and excludes later higher scores" do
     activity_exercise = create_quiz_link
-    first = Exercises::QuizSubmission.call(activity_exercise:, student: @student, answers: { "0" => "a" }).attempt
+    first = Exercises::QuizSubmission.call(activity_exercise:, student: @student, answers: { "0" => "a", "1" => "wrong" }).attempt
     Exercises::QuizSubmission.call(activity_exercise:, student: @student, answers: { "0" => "a", "1" => "42" })
     Exercises::QuizSubmission.call(activity_exercise:, student: @other_student, answers: { "0" => "a", "1" => "42" })
 
@@ -110,9 +170,9 @@ class ActivityResultsTest < ActiveSupport::TestCase
     ordering = create_ordering_link
 
     assert_not ActivityResults.lesson_completed?(activity: @activity, student: @student)
-    Exercises::QuizSubmission.call(activity_exercise: quiz, student: @student, answers: { "0" => "a" })
+    Exercises::QuizSubmission.call(activity_exercise: quiz, student: @student, answers: { "0" => "a", "1" => "wrong" })
     assert_not ActivityResults.lesson_completed?(activity: @activity, student: @student)
-    Exercises::OrderingSubmission.call(activity_exercise: ordering, student: @student, ordered_ids: [ "item-1" ])
+    Exercises::OrderingSubmission.call(activity_exercise: ordering, student: @student, ordered_ids: [ "item-1", "item-2" ])
     assert ActivityResults.lesson_completed?(activity: @activity, student: @student)
 
     quiz.activity.update!(published: false)

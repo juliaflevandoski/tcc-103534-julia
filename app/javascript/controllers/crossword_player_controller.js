@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["cell", "answer"]
+  static targets = ["cell", "answer", "entry", "status"]
 
   connect() {
     this.cellsByPosition = new Map(this.cellTargets.map((cell) => [`${cell.dataset.row}-${cell.dataset.column}`, cell]))
@@ -13,6 +13,7 @@ export default class extends Controller {
       .find((character) => /^[A-Z]$/.test(character)) || ""
     input.value = normalized
     if (normalized) this.focusNext(input, 0, 1)
+    this.updatePendingStatus()
   }
 
   navigateCells(event) {
@@ -46,10 +47,42 @@ export default class extends Controller {
   }
 
   serializeAnswer(event) {
+    const pendingEntries = this.pendingEntries()
+    if (pendingEntries.length > 0) {
+      event.preventDefault()
+      this.updatePendingStatus()
+      const entry = pendingEntries[0]
+      const firstCell = this.cellTargets.find((cell) =>
+        cell.dataset.row === entry.dataset.row && cell.dataset.column === entry.dataset.column
+      )
+      firstCell?.focus()
+      return
+    }
+
     const cells = Object.fromEntries(this.cellTargets.map((cell) => [
       `${cell.dataset.row}-${cell.dataset.column}`,
       cell.value.trim()
     ]))
     this.answerTarget.value = JSON.stringify({ cells })
+  }
+
+  updatePendingStatus() {
+    const pendingEntries = this.pendingEntries()
+    this.statusTarget.textContent = pendingEntries.length > 0 ?
+      `Ainda faltam preencher ${pendingEntries.length} ${pendingEntries.length === 1 ? "palavra" : "palavras"}: ${pendingEntries.map((entry) => entry.dataset.pendingLabel).join(", ")}.` :
+      "Todas as palavras estão preenchidas; respostas incorretas também podem ser enviadas."
+  }
+
+  pendingEntries() {
+    return this.entryTargets.filter((entry) => {
+      const rowOffset = entry.dataset.direction === "down" ? 1 : 0
+      const columnOffset = entry.dataset.direction === "across" ? 1 : 0
+      return Array.from({ length: Number(entry.dataset.length) }, (_, index) => {
+        const row = Number(entry.dataset.row) + rowOffset * index
+        const column = Number(entry.dataset.column) + columnOffset * index
+        const cell = this.cellsByPosition.get(`${row}-${column}`)
+        return !cell || cell.value.trim() === ""
+      }).some(Boolean)
+    })
   }
 }

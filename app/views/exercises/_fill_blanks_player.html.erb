@@ -1,6 +1,7 @@
 	<h1><%= exercise.title %></h1>
 	<p>Complete as lacunas</p>
-	<%= form_with url: exercise_attempts_path, scope: :exercise_attempt do %>
+	<%= form_with url: exercise_attempts_path, scope: :exercise_attempt,
+		data: { controller: "required-responses", action: "input->required-responses#update change->required-responses#update submit->required-responses#validate" } do %>
 		<%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
 		<p class="fill-blanks-text">
 			<% blank_number = 0 %>
@@ -12,11 +13,14 @@
 						id: "fill-blank-answer-#{marker[1]}",
 						class: "fill-blank-input",
 						autocomplete: "off",
-						aria: { label: "Resposta da lacuna #{blank_number}" } %>
+						aria: { label: "Resposta da lacuna #{blank_number}" },
+						required: true,
+						data: { required_responses_target: "field", response_group: "blank-#{marker[1]}", response_label: "lacuna #{blank_number}" } %>
 				<% else %>
 					<%= segment %>
 				<% end %>
 			<% end %>
 		</p>
+		<p data-required-responses-target="status" role="status" aria-live="polite"></p>
 		<%= submit_tag "Enviar respostas", class: "button" %>
 	<% end %>

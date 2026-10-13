@@ -1,6 +1,6 @@
 <h1><%= exercise.title %></h1>
 <p><%= crossword.fetch(:instructions) %></p>
-<%= form_with url: exercise_attempts_path, scope: :exercise_attempt, data: { controller: "crossword-player", action: "submit->crossword-player#serializeAnswer" } do %>
+<%= form_with url: exercise_attempts_path, scope: :exercise_attempt, data: { controller: "crossword-player", action: "input->crossword-player#updatePendingStatus submit->crossword-player#serializeAnswer" } do %>
   <%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
   <%= hidden_field_tag "exercise_attempt[answer]", "{}", data: { crossword_player_target: "answer" } %>
   <div class="crossword-board-scroll">
@@ -14,6 +14,7 @@
                 <% if starting_numbers.any? %><span class="crossword-cell-number"><%= starting_numbers.min %></span><% end %>
                 <input type="text" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false"
                   aria-label="Linha <%= row_index + 1 %>, coluna <%= column_index + 1 %>"
+                  required
                   data-crossword-player-target="cell" data-row="<%= row_index %>" data-column="<%= column_index %>"
                   data-action="input->crossword-player#inputLetter keydown->crossword-player#navigateCells">
               </td>
@@ -32,10 +33,14 @@
     <h2><%= label %></h2>
     <ol>
       <% entries.each do |entry| %>
-        <li value="<%= entry[:number] %>"><%= entry[:clue] %> (<%= entry[:length] %> letras)</li>
+        <li value="<%= entry[:number] %>" data-crossword-player-target="entry"
+          data-row="<%= entry[:row] %>" data-column="<%= entry[:column] %>"
+          data-direction="<%= entry[:direction] %>" data-length="<%= entry[:length] %>"
+          data-pending-label="palavra <%= entry[:number] %> (<%= label.downcase %>)"><%= entry[:clue] %> (<%= entry[:length] %> letras)</li>
       <% end %>
     </ol>
   <% end %>
 
+  <p data-crossword-player-target="status" role="status" aria-live="polite"></p>
   <div class="actions"><%= submit_tag "Conferir cruzadinha", class: "button" %></div>
 <% end %>

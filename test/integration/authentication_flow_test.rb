@@ -308,9 +308,19 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     post login_url, params: { role: "student", username: student.username, password: "secret123" }
 
     assert_difference("ExerciseAttempt.count") do
-      post exercise_attempts_url, params: { exercise_attempt: { activity_exercise_id: activity_exercise.id } }
+      post exercise_attempts_url, params: {
+        exercise_attempt: {
+          activity_exercise_id: activity_exercise.id,
+          answer: { completed: true, matches: 2, matched_card_ids: [ "forged" ] },
+          score: 11,
+          correct: { deck: [] }
+        }
+      }
     end
     attempt = ExerciseAttempt.order(:id).last
+    assert_equal false, attempt.answer.fetch("completed")
+    assert_nil ActivityResults.official_attempt(activity_exercise:, student:)
+    assert_not ActivityResults.lesson_completed?(activity: activity_exercise.activity, student:)
     assert_redirected_to exercise_url(exercise, activity_exercise_id: activity_exercise.id, memory_game_attempt_id: attempt.id)
     original_deck = attempt.correct.fetch("deck")
     follow_redirect!
@@ -329,6 +339,9 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, revealed_content
     assert_not_includes response.body, "pair_id"
+    get exercise_url(exercise, activity_exercise_id: activity_exercise.id)
+    assert_response :success
+    assert_includes response.body, revealed_content
 
     complete_memory_attempt(attempt, pair_count: 2)
     assert_equal 11, attempt.reload.score
@@ -536,13 +549,16 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
   test "crossword attempts use server scoring and award proportional XP" do
     _teacher, student, exercise, activity_exercise = create_student_crossword(points: 11)
     post login_url, params: { role: "student", username: student.username, password: "secret123" }
-    entry = exercise.object.fetch("words").find { |word| word.fetch("id") == "word-1" }
-    cells = {}
-    entry.fetch("normalized").chars.each_with_index do |letter, index|
-      row = entry.fetch("row") + (entry.fetch("direction") == "down" ? index : 0)
-      column = entry.fetch("column") + (entry.fetch("direction") == "across" ? index : 0)
-      cells["#{row}-#{column}"] = letter
-    end
+    layout = exercise.object.deep_stringify_keys
+    cells = crossword_grid_answers(layout)
+    first_entry, second_entry = layout.fetch("words")
+    incorrect_cell = (crossword_entry_cell_ids(second_entry) - crossword_entry_cell_ids(first_entry)).first
+    cells[incorrect_cell] = cells.fetch(incorrect_cell) == "Z" ? "Y" : "Z"
+
+    get exercise_url(exercise, activity_exercise_id: activity_exercise.id)
+    assert_response :success
+    assert_select "input[required][data-crossword-player-target='cell']", count: cells.length
+    assert_select "p[data-crossword-player-target='status'][aria-live='polite']"
 
     assert_difference("ExerciseAttempt.count") do
       post exercise_attempts_url, params: {
@@ -571,6 +587,25 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "PEAR"
     get edit_exercise_attempt_url(attempt)
     assert_redirected_to root_url
+  end
+
+  test "crossword rejects a missing open cell without creating an attempt or XP" do
+    _teacher, student, exercise, activity_exercise = create_student_crossword(points: 11)
+    post login_url, params: { role: "student", username: student.username, password: "secret123" }
+    cells = crossword_grid_answers(exercise.object.deep_stringify_keys)
+    cells.delete(cells.keys.first)
+
+    assert_no_difference("ExerciseAttempt.count") do
+      post exercise_attempts_url, params: {
+        exercise_attempt: { activity_exercise_id: activity_exercise.id, answer: { cells: }.to_json }
+      }
+    end
+
+    assert_redirected_to exercise_url(exercise, activity_exercise_id: activity_exercise.id)
+    assert_equal "Preencha todas as respostas obrigatórias antes de enviar a atividade.", flash[:alert]
+    assert_not StudentStat.exists?(student_id: student.id)
+    assert_nil ActivityResults.official_attempt(activity_exercise:, student:)
+    assert_not ActivityResults.lesson_completed?(activity: activity_exercise.activity, student:)
   end
 
   test "crossword retries keep history but award XP only once, including after soft delete" do
@@ -693,6 +728,22 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
         assert_response :success
       end
       assert_equal true, attempt.reload.answer.to_h["matched_card_ids"].include?(cards[0].fetch("id"))
+    end
+  end
+
+  def crossword_grid_answers(layout)
+    layout.fetch("grid").fetch("cells").each_with_index.flat_map do |row, row_index|
+      row.each_with_index.filter_map do |letter, column_index|
+        [ "#{row_index}-#{column_index}", letter ] if letter.present?
+      end
+    end.to_h
+  end
+
+  def crossword_entry_cell_ids(entry)
+    Array.new(entry.fetch("normalized").length) do |index|
+      row = entry.fetch("row") + (entry.fetch("direction") == "down" ? index : 0)
+      column = entry.fetch("column") + (entry.fetch("direction") == "across" ? index : 0)
+      "#{row}-#{column}"
     end
   end
 end
