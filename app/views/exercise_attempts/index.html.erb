@@ -1,17 +1,111 @@
-<main>
-	<div class="toolbar"><h1>Tentativas</h1></div>
-	<table>
-		<thead><tr><th>Aluno</th><th>Exercício</th><th>Nota</th><th>Data</th><th></th></tr></thead>
-		<tbody>
-			<% @exercise_attempts.each do |attempt| %>
-				<tr>
-					<td><%= attempt.student.name %></td>
-					<td><%= attempt.activity_exercise.exercise.title %></td>
-					<td><%= attempt.score %></td>
-					<td><%= l(attempt.created_at, format: :short) %></td>
-					<td><%= link_to "Ver", attempt %><% if current_teacher %> | <%= button_to "Desativar", attempt, method: :delete, class: "button danger" %><% end %></td>
-				</tr>
+<main class="results-page">
+	<div class="toolbar"><h1>Resultados</h1></div>
+	<%= form_with url: exercise_attempts_path, method: :get, class: "results-filter" do %>
+		<%= label_tag :school_class_id, "Turma" %>
+		<%= select_tag :school_class_id, options_for_select([["Todas as turmas", ""]] + @school_classes.map { |school_class| [school_class.name, school_class.id] }, @selected_school_class&.id) %>
+		<%= submit_tag "Filtrar", class: "button" %>
+	<% end %>
+
+	<% if current_student %>
+		<% if @student_stat %>
+			<p class="results-xp-summary">XP: <strong><%= @student_stat.xp %></strong> <span aria-hidden="true">|</span> Nível: <strong><%= @student_stat.level %></strong></p>
+		<% end %>
+		<% if @result_sections.empty? %><p class="results-empty" role="status">Você ainda não está em uma turma ativa.</p><% end %>
+	<% elsif @result_sections.empty? %>
+		<p class="results-empty" role="status">Não há turmas ativas para consultar.</p>
+	<% end %>
+
+	<% @result_sections.each do |section| %>
+		<section class="results-class results-class-card">
+			<h2 class="results-class-title"><%= section.fetch(:school_class).name %></h2>
+			<% if current_teacher %>
+				<div class="results-overview">
+					<p class="results-metric"><span class="results-metric-label">Média das médias individuais</span><strong class="results-metric-value"><%= section[:class_average].nil? ? "Sem notas elegíveis" : number_to_percentage(section[:class_average], precision: 1) %></strong></p>
+					<p class="results-metric"><span class="results-metric-label">Exercícios concluídos</span><strong class="results-metric-value"><%= section[:completed_exercises] %> / <%= section[:possible_exercises] %></strong><span>resultados aluno-exercício</span></p>
+				</div>
+				<div class="student-results-summary-wrap">
+				<table class="student-results-summary">
+					<thead><tr><th>Aluno</th><th>Média individual</th><th>Exercícios concluídos</th><th>Pendentes</th></tr></thead>
+					<tbody>
+						<% section.fetch(:students).each do |student| %>
+							<% student_exercises = section.fetch(:activities).flat_map { |activity_result| activity_result.fetch(:exercises) } %>
+							<% completed_count = student_exercises.count { |exercise_result| exercise_result.fetch(:official_by_student).key?(student.id) } %>
+							<% pending_count = student_exercises.length - completed_count %>
+							<tr>
+								<td><%= student.name %></td>
+								<td><%= section[:student_averages][student.id].nil? ? "Sem notas elegíveis" : number_to_percentage(section[:student_averages][student.id], precision: 1) %></td>
+								<td><%= completed_count %></td>
+								<td><%= pending_count %></td>
+							</tr>
+						<% end %>
+					</tbody>
+				</table>
+				</div>
+			<% else %>
+				<p class="results-metric"><span class="results-metric-label">Sua média de notas oficiais</span> <strong class="results-metric-value"><%= section[:student_averages][current_student.id].nil? ? "Sem notas elegíveis" : number_to_percentage(section[:student_averages][current_student.id], precision: 1) %></strong></p>
 			<% end %>
-		</tbody>
-	</table>
+
+			<% if section.fetch(:activities).empty? %>
+				<p class="results-empty" role="status">Não há aulas disponíveis para consulta.</p>
+			<% end %>
+			<% section.fetch(:activities).each do |activity_result| %>
+				<section class="results-activity">
+					<h3 class="results-activity-title"><%= activity_result.fetch(:activity).title %></h3>
+					<% if activity_result.fetch(:exercises).empty? %>
+						<p class="results-empty" role="status">Esta aula não possui exercícios ativos.</p>
+					<% end %>
+					<% activity_result.fetch(:exercises).each do |exercise_result| %>
+						<% activity_exercise = exercise_result.fetch(:activity_exercise) %>
+						<% official_by_student = exercise_result.fetch(:official_by_student) %>
+						<% attempts_by_student = exercise_result.fetch(:attempts_by_student) %>
+						<% student_official = current_student && official_by_student[current_student.id] %>
+						<% student_attempts = current_student ? attempts_by_student.fetch(current_student.id, []) : [] %>
+						<% student_in_progress = current_student && activity_exercise.exercise.memory_game? && student_attempts.any? { |attempt| attempt.active? && !attempt.answer.to_h["completed"] } %>
+						<% student_status = if student_official then ["Concluída", "completed"] elsif student_in_progress then ["Em andamento", "in-progress"] else ["Pendente", "pending"] end %>
+						<section class="results-exercise results-exercise-card">
+							<header class="results-exercise-header">
+								<h4><%= link_to activity_exercise.exercise.title, exercise_path(activity_exercise.exercise, activity_exercise_id: activity_exercise.id) %></h4>
+								<% if current_student %><span class="result-status result-status--<%= student_status.last %>"><%= student_status.first %></span><% end %>
+							</header>
+							<p class="results-points-configured">Pontos configurados para novas tentativas: <strong><%= activity_exercise.points %></strong></p>
+							<% if current_teacher %>
+								<p class="results-metric"><span class="results-metric-label">Média oficial do exercício</span> <strong class="results-metric-value"><%= exercise_result[:average_percentage].nil? ? "Sem notas elegíveis" : number_to_percentage(exercise_result[:average_percentage], precision: 1) %></strong></p>
+								<%= render "exercise_result_performance", exercise_result:, activity_exercise: %>
+								<div class="exercise-results-wrap">
+								<table class="exercise-results">
+									<thead><tr><th>Aluno</th><th>Status</th><th>Nota oficial</th><th>Percentual</th><th>Histórico</th></tr></thead>
+									<tbody>
+										<% section.fetch(:students).each do |student| %>
+											<% official = official_by_student[student.id] %>
+											<% attempts = attempts_by_student.fetch(student.id, []) %>
+											<% in_progress = activity_exercise.exercise.memory_game? && attempts.any? { |attempt| attempt.active? && !attempt.answer.to_h["completed"] } %>
+											<% official_points = official && ActivityResults.points_possible(attempt: official) %>
+											<% row_status = official ? ["Concluída", "completed"] : (in_progress ? ["Em andamento", "in-progress"] : ["Pendente", "pending"]) %>
+											<tr>
+												<td><%= student.name %></td>
+												<td><span class="result-status result-status--<%= row_status.last %>"><%= row_status.first %></span></td>
+												<td><strong class="official-score"><%= official ? "#{official.score} / #{official_points.nil? ? 'máximo não registrado' : official_points}" : "—" %></strong></td>
+												<td><%= official ? (ActivityResults.attempt_percentage(attempt: official) ? number_to_percentage(ActivityResults.attempt_percentage(attempt: official), precision: 1) : (official_points.nil? ? "Máximo histórico não registrado" : "Não aplicável")) : "—" %></td>
+												<td><%= render "attempt_history", attempts:, official_attempt: official %></td>
+											</tr>
+										<% end %>
+									</tbody>
+								</table>
+									</div>
+							<% else %>
+									<% official = student_official %>
+									<% attempts = student_attempts %>
+								<% official_points = official && ActivityResults.points_possible(attempt: official) %>
+									<dl class="student-exercise-metrics">
+										<div class="student-exercise-metric student-exercise-metric--score"><dt>Nota oficial</dt><dd><%= official ? "#{official.score} / #{official_points.nil? ? 'máximo não registrado' : official_points}" : "—" %></dd></div>
+										<div class="student-exercise-metric"><dt>Percentual proporcional</dt><dd><%= official ? (ActivityResults.attempt_percentage(attempt: official) ? number_to_percentage(ActivityResults.attempt_percentage(attempt: official), precision: 1) : (official_points.nil? ? "Máximo histórico não registrado" : "Não aplicável")) : "—" %></dd></div>
+									</dl>
+								<%= render "attempt_history", attempts:, official_attempt: official %>
+							<% end %>
+						</section>
+					<% end %>
+				</section>
+			<% end %>
+		</section>
+	<% end %>
 </main>

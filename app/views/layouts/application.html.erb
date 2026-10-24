@@ -31,6 +31,7 @@
         <nav>
           <%= link_to "Turmas", school_classes_path %>
           <%= link_to "Aulas", activities_path %>
+          <%= link_to "Resultados", exercise_attempts_path %>
           <% if current_teacher %><%= link_to "Exercícios", exercises_path %><% end %>
         </nav>
         <%= button_to "Sair", logout_path, method: :delete, class: "button" %>

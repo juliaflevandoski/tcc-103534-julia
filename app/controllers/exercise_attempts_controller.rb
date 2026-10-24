@@ -1,18 +1,39 @@
 class ExerciseAttemptsController < ApplicationController
-  before_action :set_exercise_attempt, only: %i[show edit update destroy memory_game_turn]
+  before_action :set_exercise_attempt, only: %i[edit update destroy memory_game_turn]
+  before_action :set_exercise_attempt_for_show, only: :show
 
   def index
     authorize ExerciseAttempt
-    attempts = ExerciseAttempt.active
-    attempts = if current_teacher
-      attempts.joins(activity_exercise: :activity).where(activities: { teacher_id: current_teacher.id })
-    else
-      attempts.where(student_id: current_student.id)
+    @school_classes = results_school_classes.order(:name).to_a
+    @selected_school_class = @school_classes.find { |school_class| school_class.id.to_s == params[:school_class_id] } if params[:school_class_id].present?
+    if params[:school_class_id].present? && @selected_school_class.nil?
+      return redirect_to root_path, alert: "Turma inválida."
     end
-    @exercise_attempts = attempts.includes(:student, :activity_exercise).order(created_at: :desc)
+
+    selected_classes = @selected_school_class ? [ @selected_school_class ] : @school_classes
+    @result_sections = selected_classes.map do |school_class|
+      ResultsDashboard.call(user: current_user, school_class:)
+    end
+    @student_stat = current_student&.student_stat
   end
 
-  def show; authorize @exercise_attempt; end
+  def show
+    authorize @exercise_attempt
+    @official_attempt = ActivityResults.official_attempt(
+      activity_exercise: @exercise_attempt.activity_exercise,
+      student: @exercise_attempt.student
+    )
+    @attempt_points_possible = ActivityResults.points_possible(attempt: @exercise_attempt)
+    @attempt_percentage = ActivityResults.attempt_percentage(attempt: @exercise_attempt)
+    @attempt_result_summary = attempt_result_summary
+    activity = @exercise_attempt.activity_exercise.activity
+    @return_to_activity = if current_teacher
+      activity.active? && activity.teacher_id == current_teacher.id
+    else
+      activity.active? && activity.published? && activity.school_class.active? &&
+        activity.school_class.class_students.active.exists?(student_id: current_student.id)
+    end
+  end
 
   def new
     @exercise_attempt = ExerciseAttempt.new(answer: {}, correct: {})
@@ -325,6 +346,52 @@ class ExerciseAttemptsController < ApplicationController
 
   def set_exercise_attempt
     @exercise_attempt = ExerciseAttempt.active.find(params[:id])
+  end
+
+  def set_exercise_attempt_for_show
+    @exercise_attempt = ExerciseAttempt.find(params[:id])
+  end
+
+  def attempt_result_summary
+    exercise = @exercise_attempt.activity_exercise.exercise
+    correct = @exercise_attempt.correct.to_h
+    answer = @exercise_attempt.answer.to_h
+
+    if exercise.memory_game?
+      pair_ids = Array(correct["deck"]).filter_map { |card| card["pair_id"] if card.is_a?(Hash) }.uniq
+      return if pair_ids.empty? || answer["matches"].nil?
+
+      return { label: "Pares encontrados", unit_label: "pares encontrados", correct: answer["matches"].to_i, total: pair_ids.length }
+    end
+
+    statuses, unit_label = case exercise.exercise_type
+    when "quiz"
+      [ correct["questions"], "respostas corretas" ]
+    when "fill_blanks"
+      [ correct["blanks"], "lacunas corretas" ]
+    when "ordering"
+      [ correct["positions"], "itens corretos" ]
+    when "crossword"
+      [ correct["statuses"]&.values, "palavras corretas" ]
+    end
+    statuses = statuses.is_a?(Hash) ? statuses.values : Array(statuses)
+    return if statuses.empty?
+
+    {
+      label: "Respostas corretas",
+      unit_label:,
+      correct: statuses.count { |status| status.is_a?(Hash) ? status["correct"] == true : status == true },
+      total: statuses.length
+    }
+  end
+
+  def results_school_classes
+    if current_teacher
+      current_teacher.school_classes.active
+    else
+      current_student.school_classes.active.joins(:class_students)
+        .where(classes_students: { student_id: current_student.id, active: true }).distinct
+    end
   end
 
   def load_options

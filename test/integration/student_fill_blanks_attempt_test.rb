@@ -36,6 +36,9 @@ class StudentFillBlanksAttemptTest < ActionDispatch::IntegrationTest
 
     follow_redirect!
     assert_response :success
+    assert_select ".attempt-result-count strong", text: "1 de 2 lacunas corretas"
+    assert_select "li.attempt-question-card", count: 2
+    assert_select ".result-status--incorrect", count: 1
     assert_select "ol.fill-blanks-feedback li", count: 2
     assert_includes response.body, "Resposta correta: Brasília"
     assert_select "a", text: "Tentar novamente"

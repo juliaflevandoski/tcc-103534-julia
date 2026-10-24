@@ -34,6 +34,9 @@ class StudentOrderingAttemptTest < ActionDispatch::IntegrationTest
 
     follow_redirect!
     assert_response :success
+    assert_select ".attempt-result-count strong", text: "2 de 4 itens corretos"
+    assert_select "li.attempt-question-card", count: 4
+    assert_select ".result-status--incorrect", count: 2
     assert_select "ol.ordering-feedback-list li", count: 4
     assert_includes response.body, "Sequência correta:"
     assert_select "a", text: "Tentar novamente"

@@ -1,72 +1,139 @@
-<main>
-	<h1>Tentativa de <%= @exercise_attempt.student.name %></h1>
-	<p>Exercício: <%= @exercise_attempt.activity_exercise.exercise.title %></p>
-	<p>Pontuação: <%= @exercise_attempt.score %></p>
-	<% if @exercise_attempt.activity_exercise.exercise.quiz? && current_student %>
+<% exercise = @exercise_attempt.activity_exercise.exercise %>
+<% answer = @exercise_attempt.answer.to_h %>
+<% is_official = @official_attempt&.id == @exercise_attempt.id %>
+<% memory_in_progress = exercise.memory_game? && !answer["completed"] && @exercise_attempt.active? %>
+<main class="attempt-result-page">
+	<nav class="attempt-result-navigation" aria-label="Navegação de resultados">
+		<%= link_to "Resultados", exercise_attempts_path(school_class_id: @exercise_attempt.activity_exercise.activity.class_id) %>
+		<%= link_to "Voltar à aula", activity_path(@exercise_attempt.activity_exercise.activity) if @return_to_activity %>
+	</nav>
+
+	<header class="attempt-result-header">
+		<div class="attempt-result-heading">
+			<h1><%= exercise.title %></h1>
+			<% if !@exercise_attempt.active? %>
+				<span class="result-status result-status--neutral">Desativada</span>
+			<% elsif is_official %>
+				<span class="result-status result-status--official">Tentativa oficial</span>
+			<% elsif memory_in_progress %>
+				<span class="result-status result-status--in-progress">Em andamento</span>
+			<% else %>
+				<span class="result-status result-status--neutral">Tentativa não oficial</span>
+			<% end %>
+		</div>
+		<p class="attempt-result-meta">
+			<span>Tentativa de <%= @exercise_attempt.student.name %></span>
+			<time datetime="<%= @exercise_attempt.created_at.iso8601 %>"><%= l(@exercise_attempt.created_at, format: :short) %></time>
+		</p>
+		<div class="attempt-result-summary">
+			<p class="attempt-result-score">Nota obtida<strong><%= @exercise_attempt.score %> pontos</strong></p>
+			<p class="attempt-result-score">Máximo da tentativa<strong><%= @attempt_points_possible.nil? ? "Não registrado" : "#{@attempt_points_possible} pontos" %></strong></p>
+			<% if @attempt_percentage %>
+				<p class="attempt-result-score">Percentual proporcional<strong><%= number_to_percentage(@attempt_percentage, precision: 1) %></strong></p>
+			<% end %>
+			<% if @attempt_result_summary %>
+				<p class="attempt-result-count"><%= @attempt_result_summary.fetch(:label) %><strong><%= @attempt_result_summary.fetch(:correct) %> de <%= @attempt_result_summary.fetch(:total) %> <%= @attempt_result_summary.fetch(:unit_label) %></strong></p>
+			<% end %>
+		</div>
+		<% if current_student && @attempt_points_possible.to_i.zero? %>
+			<p class="attempt-result-note">Este exercício não tem pontos possíveis; não há percentual proporcional para esta tentativa.</p>
+		<% elsif current_student && @attempt_points_possible.nil? %>
+			<p class="attempt-result-note">O máximo de pontos desta tentativa antiga não foi registrado; o percentual não está disponível.</p>
+		<% end %>
+	</header>
+
+	<% if exercise.quiz? && current_student %>
 		<% feedback = @exercise_attempt.correct.fetch("questions", []) %>
-		<ol class="quiz-feedback">
-			<% feedback.each do |question| %>
-				<li>
-					<p><%= question.fetch("statement") %></p>
-					<p><%= question.fetch("correct") ? "Correta" : "Incorreta" %></p>
-					<p>Resposta correta: <%= question.fetch("correct_answer") %></p>
+		<% submitted_answers = answer.fetch("answers", {}) %>
+		<% questions = exercise.object.fetch("questions", []) %>
+		<ol class="quiz-feedback attempt-question-list">
+			<% feedback.each_with_index do |question, index| %>
+				<% source_question = questions[index].to_h %>
+				<% raw_answer = submitted_answers[index.to_s].to_s %>
+				<% submitted_answer = case source_question["question_type"]
+				when "multiple_choice"
+					Array(source_question["options"]).find { |option| option.to_h["id"].to_s == raw_answer }&.to_h&.fetch("text", raw_answer) || raw_answer
+				when "true_false"
+					raw_answer == "true" ? "Verdadeiro" : (raw_answer == "false" ? "Falso" : raw_answer)
+				else
+					raw_answer
+				end %>
+				<li class="attempt-question-card <%= question["correct"] ? "is-correct" : "is-incorrect" %>">
+					<div class="attempt-question-heading"><span class="attempt-question-prompt">Questão <%= index + 1 %></span><span class="result-status result-status--<%= question["correct"] ? "correct" : "incorrect" %>"><%= question["correct"] ? "Correta" : "Incorreta" %></span></div>
+					<p class="attempt-question-prompt"><%= question.fetch("statement", "Questão #{index + 1}") %></p>
+					<p>Resposta enviada: <%= submitted_answer.presence || "Não disponível" %></p>
+					<p>Resposta correta: <%= question.fetch("correct_answer", "Não disponível") %></p>
 				</li>
 			<% end %>
 		</ol>
-		<p>XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
-		<%= link_to "Tentar novamente", exercise_path(@exercise_attempt.activity_exercise.exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
-	<% elsif @exercise_attempt.activity_exercise.exercise.fill_blanks? && current_student %>
+		<p class="attempt-result-note">XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
+		<%= link_to "Tentar novamente", exercise_path(exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
+	<% elsif exercise.fill_blanks? && current_student %>
 		<% feedback = @exercise_attempt.correct.fetch("blanks", []) %>
-		<% answers = @exercise_attempt.answer.fetch("answers", {}) %>
-		<ol class="fill-blanks-feedback">
+		<% answers = answer.fetch("answers", {}) %>
+		<ol class="fill-blanks-feedback attempt-question-list">
 			<% feedback.each_with_index do |blank, index| %>
-				<li>
-					<p>Lacuna <%= index + 1 %>: <%= blank.fetch("correct") ? "Correta" : "Incorreta" %></p>
-					<p>Sua resposta: <%= answers.fetch(blank.fetch("id"), "").presence || "(em branco)" %></p>
-					<p>Resposta correta: <%= blank.fetch("correct_answer") %></p>
+				<% is_correct = blank.fetch("correct") %>
+				<li class="attempt-question-card <%= is_correct ? "is-correct" : "is-incorrect" %>">
+					<div class="attempt-question-heading"><span class="attempt-question-prompt">Lacuna <%= index + 1 %></span><span class="result-status result-status--<%= is_correct ? "correct" : "incorrect" %>"><%= is_correct ? "Correta" : "Incorreta" %></span></div>
+					<p>Resposta enviada: <%= answers.fetch(blank.fetch("id"), "").presence || "(em branco)" %></p>
+					<p>Resposta correta: <%= blank.fetch("correct_answer", "Não disponível") %></p>
 				</li>
 			<% end %>
 		</ol>
-		<p>XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
-		<%= link_to "Tentar novamente", exercise_path(@exercise_attempt.activity_exercise.exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
-	<% elsif @exercise_attempt.activity_exercise.exercise.ordering? && current_student %>
+		<p class="attempt-result-note">XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
+		<%= link_to "Tentar novamente", exercise_path(exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
+	<% elsif exercise.ordering? && current_student %>
 		<% positions = @exercise_attempt.correct.fetch("positions", []) %>
-		<p><%= positions.count { |position| position.fetch("correct") } %> de <%= positions.length %> itens na posição correta</p>
-		<p>Sequência correta:</p>
-		<ol class="ordering-feedback-list">
-			<% positions.each do |position| %>
-				<li><%= position.fetch("expected_label") %></li>
+		<% ordered_ids = answer.fetch("ordered_ids", []) %>
+		<% item_labels = exercise.object.fetch("items", []).to_h { |item| [item.fetch("id").to_s, item.fetch("label").to_s] } %>
+		<ol class="ordering-feedback-list attempt-question-list">
+			<% positions.each_with_index do |position, index| %>
+				<% is_correct = position.fetch("correct") %>
+				<% submitted_id = ordered_ids[index].to_s %>
+				<li class="attempt-question-card <%= is_correct ? "is-correct" : "is-incorrect" %>">
+					<div class="attempt-question-heading"><span class="attempt-question-prompt">Posição <%= index + 1 %></span><span class="result-status result-status--<%= is_correct ? "correct" : "incorrect" %>"><%= is_correct ? "Correta" : "Incorreta" %></span></div>
+					<p>Item enviado: <%= item_labels[submitted_id].presence || "Não disponível" %></p>
+					<p>Item esperado: <%= position.fetch("expected_label", "Não disponível") %></p>
+				</li>
 			<% end %>
 		</ol>
-		<p>XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
-		<%= link_to "Tentar novamente", exercise_path(@exercise_attempt.activity_exercise.exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
-	<% elsif @exercise_attempt.activity_exercise.exercise.crossword? && current_student %>
+		<p class="attempt-result-note">Sequência correta:</p>
+		<p class="attempt-result-note">XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
+		<%= link_to "Tentar novamente", exercise_path(exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
+	<% elsif exercise.crossword? && current_student %>
 		<% statuses = @exercise_attempt.correct.fetch("statuses", {}) %>
-		<% entries = @exercise_attempt.activity_exercise.exercise.object.fetch("words") %>
-		<p><%= statuses.values.count(true) %> de <%= statuses.length %> palavras corretas</p>
-		<ul>
+		<% entries = exercise.object.fetch("words", []) %>
+		<ul class="crossword-feedback attempt-question-list">
 			<% entries.each do |entry| %>
-				<li>Pista <%= entry.fetch("number") %>: <%= statuses[entry.fetch("id")] ? "Correta" : "Incorreta ou incompleta" %></li>
+				<% is_correct = statuses[entry.fetch("id")] == true %>
+				<li class="attempt-question-card <%= is_correct ? "is-correct" : "is-incorrect" %>">
+					<div class="attempt-question-heading"><span class="attempt-question-prompt">Pista <%= entry.fetch("number") %></span><span class="result-status result-status--<%= is_correct ? "correct" : "incorrect" %>"><%= is_correct ? "Correta" : "Incorreta" %></span></div>
+					<p><%= entry.fetch("clue") %></p>
+				</li>
 			<% end %>
 		</ul>
-		<p>XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
-		<%= link_to "Tentar novamente", exercise_path(@exercise_attempt.activity_exercise.exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
-	<% elsif @exercise_attempt.activity_exercise.exercise.memory_game? && current_student %>
-		<% result = @exercise_attempt.answer.to_h %>
-		<% total_pairs = @exercise_attempt.correct.fetch("deck").map { |card| card.fetch("pair_id") }.uniq.length %>
-		<p>Pares encontrados: <%= result.fetch("matches", 0) %> de <%= total_pairs %></p>
-		<p>Tentativas: <%= result.fetch("attempts", 0) %></p>
-		<p>Acertos: <%= result.fetch("matches", 0) %></p>
-		<p>Erros: <%= result.fetch("errors", 0) %></p>
-		<p>Tempo: <%= @exercise_attempt.time_spent || 0 %> segundos</p>
+		<p class="attempt-result-note">XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
+		<%= link_to "Tentar novamente", exercise_path(exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
+	<% elsif exercise.memory_game? && current_student %>
+		<% result = answer %>
+		<ul class="attempt-memory-summary">
+			<li><strong>Pares encontrados</strong><%= result.fetch("matches", 0) %> / <%= @attempt_result_summary&.fetch(:total, 0) %></li>
+			<li><strong>Acertos</strong><%= result.fetch("matches", 0) %></li>
+			<li><strong>Erros</strong><%= result.fetch("errors", 0) %></li>
+			<li><strong>Comparações</strong><%= result.fetch("attempts", 0) %></li>
+		</ul>
+		<p class="attempt-result-meta">Tempo: <%= @exercise_attempt.time_spent || 0 %> segundos</p>
 		<% if result["completed"] %>
-			<p>XP concedido nesta partida: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
+			<p class="attempt-result-note">XP concedido nesta partida: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
 		<% end %>
-		<%= link_to "Voltar ao jogo", exercise_path(@exercise_attempt.activity_exercise.exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id, memory_game_attempt_id: @exercise_attempt.id), class: "button" unless result["completed"] %>
+		<%= link_to "Voltar ao jogo", exercise_path(exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id, memory_game_attempt_id: @exercise_attempt.id), class: "button" if !result["completed"] && @exercise_attempt.active? %>
 	<% else %>
-		<pre><%= JSON.pretty_generate(@exercise_attempt.answer) %></pre>
+		<p>Esta tentativa não possui feedback detalhado para exibição.</p>
 	<% end %>
-	<% if current_teacher && !@exercise_attempt.activity_exercise.exercise.crossword? %>
-		<%= link_to "Editar", edit_exercise_attempt_path(@exercise_attempt), class: "button" %>
-	<% end %>
+
+	<div class="attempt-result-navigation">
+		<%= link_to "Resultados", exercise_attempts_path(school_class_id: @exercise_attempt.activity_exercise.activity.class_id), class: "button" %>
+		<%= link_to "Voltar à aula", activity_path(@exercise_attempt.activity_exercise.activity), class: "button" if @return_to_activity %>
+	</div>
 </main>

@@ -102,7 +102,7 @@ class AuthorizationSecurityTest < ActionDispatch::IntegrationTest
 
     get exercise_attempts_url
     assert_response :success
-    assert_includes response.body, @own_attempt.student.name
+    assert_includes response.body, @school_class.name
     assert_not_includes response.body, @other_attempt.student.name
     get exercise_attempt_url(@other_attempt)
     assert_redirected_to root_url

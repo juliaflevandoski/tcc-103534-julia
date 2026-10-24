@@ -37,6 +37,12 @@ class StudentQuizAttemptTest < ActionDispatch::IntegrationTest
 
     follow_redirect!
     assert_response :success
+    assert_select ".attempt-result-header h1", text: "Quiz de capitais"
+    assert_select ".attempt-result-score", count: 3
+    assert_select ".attempt-result-score strong", text: "60.0%", count: 1
+    assert_select ".attempt-result-count strong", text: "2 de 3 respostas corretas"
+    assert_select "li.attempt-question-card", count: 3
+    assert_select ".result-status--incorrect", count: 1
     assert_select "ol.quiz-feedback li", count: 3
     assert_includes response.body, "Resposta correta: Falso"
     assert_select "a", text: "Tentar novamente"

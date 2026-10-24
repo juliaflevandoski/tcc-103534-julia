@@ -1,0 +1,24 @@
+<% if activity_exercise.exercise.memory_game? %>
+	<% official_attempts = exercise_result.fetch(:official_by_student).values %>
+	<% if official_attempts.any? %>
+		<p>Memória nas partidas oficiais: <%= official_attempts.sum { |attempt| attempt.answer.to_h.fetch("matches", 0) } %> pares encontrados e <%= official_attempts.sum { |attempt| attempt.answer.to_h.fetch("errors", 0) } %> erros registrados. O histórico não identifica erros por par.</p>
+	<% end %>
+<% elsif exercise_result.fetch(:performance_by_item).empty? %>
+	<p>Ainda não há tentativas oficiais para detalhar por questão ou item.</p>
+<% else %>
+	<details class="item-performance">
+		<summary>Desempenho por questão/item</summary>
+		<table>
+			<thead><tr><th>Questão/item</th><th>Acertos oficiais</th><th>Percentual de acertos</th></tr></thead>
+			<tbody>
+				<% exercise_result.fetch(:performance_by_item).each do |item| %>
+					<tr>
+						<td><%= item.fetch(:label) %></td>
+						<td><%= item.fetch(:correct) %> / <%= item.fetch(:total) %></td>
+						<td><%= number_to_percentage(item.fetch(:correct).to_f / item.fetch(:total) * 100, precision: 1) %></td>
+					</tr>
+				<% end %>
+			</tbody>
+		</table>
+	</details>
+<% end %>

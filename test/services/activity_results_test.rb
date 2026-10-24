@@ -32,6 +32,7 @@ class ActivityResultsTest < ActiveSupport::TestCase
     ).attempt
 
     assert_equal 5, first.score
+    assert_equal 10, ActivityResults.points_possible(attempt: first)
     assert_equal 10, second.score
     assert_equal 0, third.score
     assert_equal first, ActivityResults.official_attempt(activity_exercise:, student: @student)
@@ -165,6 +166,56 @@ class ActivityResultsTest < ActiveSupport::TestCase
     assert_nil ActivityResults.official_attempt(activity_exercise:, student: @unattempted_student)
   end
 
+  test "normalized averages exclude zero-point exercises and weight eligible students equally" do
+    ten_point_link = create_quiz_link
+    twenty_point_link = create_ordering_link(points: 20)
+    zero_point_link = create_exercise_link(
+      :quiz,
+      {
+        "questions" => [
+          { "question_type" => "short_answer", "statement" => "Responda.", "correct_answer" => "42" }
+        ]
+      },
+      title: "Sem pontos",
+      points: 0
+    )
+
+    first_student_attempt = Exercises::QuizSubmission.call(
+      activity_exercise: ten_point_link,
+      student: @student,
+      answers: { "0" => "a", "1" => "wrong" }
+    ).attempt
+    Exercises::QuizSubmission.call(
+      activity_exercise: ten_point_link,
+      student: @other_student,
+      answers: { "0" => "a", "1" => "42" }
+    )
+    Exercises::OrderingSubmission.call(
+      activity_exercise: twenty_point_link,
+      student: @other_student,
+      ordered_ids: %w[item-1 item-2]
+    )
+    twenty_point_link.update!(points: 0)
+    Exercises::QuizSubmission.call(
+      activity_exercise: zero_point_link,
+      student: @student,
+      answers: { "0" => "wrong" }
+    )
+
+    assert_in_delta 50, ActivityResults.attempt_percentage(attempt: first_student_attempt), 0.001
+    assert_in_delta 75, ActivityResults.activity_average_percentage(activity_exercise: ten_point_link), 0.001
+    assert_in_delta 100, ActivityResults.activity_average_percentage(activity_exercise: twenty_point_link), 0.001
+    assert_nil ActivityResults.activity_average(activity_exercise: zero_point_link)
+    assert_nil ActivityResults.activity_average_percentage(activity_exercise: zero_point_link)
+    assert_in_delta 50, ActivityResults.student_average_percentage(student: @student, activity_exercises: [ ten_point_link, zero_point_link ]), 0.001
+    assert_in_delta 100, ActivityResults.student_average_percentage(student: @other_student, activity_exercises: [ ten_point_link, twenty_point_link ]), 0.001
+    assert_in_delta 75, ActivityResults.class_average_percentage(
+      students: [ @student, @other_student, @unattempted_student ],
+      activity_exercises: [ ten_point_link, twenty_point_link, zero_point_link ]
+    ), 0.001
+    assert_nil ActivityResults.student_average_percentage(student: @unattempted_student, activity_exercises: [ ten_point_link ])
+  end
+
   test "lesson completion requires every active exercise's official attempt" do
     quiz = create_quiz_link
     ordering = create_ordering_link
@@ -218,9 +269,9 @@ class ActivityResultsTest < ActiveSupport::TestCase
     Student.create!(name: username, username:, email: "#{username}@example.com", password: "secret123")
   end
 
-  def create_exercise_link(type, object, title:)
+  def create_exercise_link(type, object, title:, points: 10)
     exercise = @teacher.exercises.create!(title:, exercise_type: type, object:)
-    @activity.activity_exercises.create!(exercise:, position: @activity.activity_exercises.active.maximum(:position).to_i + 1, points: 10)
+    @activity.activity_exercises.create!(exercise:, position: @activity.activity_exercises.active.maximum(:position).to_i + 1, points:)
   end
 
   def create_quiz_link
@@ -244,13 +295,13 @@ class ActivityResultsTest < ActiveSupport::TestCase
     }, title: "Lacunas")
   end
 
-  def create_ordering_link
+  def create_ordering_link(points: 10)
     create_exercise_link(:ordering, {
       "instructions" => "Ordene os itens.",
       "item_type" => "words",
       "items" => [ { "id" => "item-1", "label" => "Um" }, { "id" => "item-2", "label" => "Dois" } ],
       "correct_order" => %w[item-1 item-2]
-    }, title: "Ordenação")
+    }, title: "Ordenação", points:)
   end
 
   def create_crossword_link

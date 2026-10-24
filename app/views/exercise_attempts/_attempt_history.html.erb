@@ -1,0 +1,25 @@
+<% if attempts.empty? %>
+	<span>Nenhuma tentativa registrada.</span>
+<% else %>
+	<details class="attempt-history">
+		<summary>Histórico (<%= attempts.length %>)</summary>
+		<ol>
+			<% attempts.each do |attempt| %>
+				<% is_official = official_attempt&.id == attempt.id %>
+				<% possible_points = ActivityResults.points_possible(attempt:) %>
+				<li>
+					<time datetime="<%= attempt.created_at.iso8601 %>"><%= l(attempt.created_at, format: :short) %></time>:
+					<%= attempt.score %> / <%= possible_points.nil? ? "máximo não registrado" : "#{possible_points} pontos" %>
+					<% percentage = ActivityResults.attempt_percentage(attempt:) %>
+					<%= "(#{number_to_percentage(percentage, precision: 1)})" if percentage %>
+					<%= "Percentual indisponível: máximo histórico não registrado" if possible_points.nil? %>
+					<%= "Nota oficial" if is_official %>
+					<%= "Tentativa não oficial" unless is_official %>
+					<%= "Desativada" unless attempt.active? %>
+					<%= link_to "Detalhes", exercise_attempt_path(attempt) %>
+					<%= button_to "Desativar", exercise_attempt_path(attempt), method: :delete, class: "button danger" if current_teacher && attempt.active? %>
+				</li>
+			<% end %>
+		</ol>
+	</details>
+<% end %>

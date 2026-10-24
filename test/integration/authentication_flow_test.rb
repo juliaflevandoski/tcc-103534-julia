@@ -72,10 +72,11 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     get exercise_attempts_url
 
     assert_response :success
-    assert_select "tbody tr", count: 1
-    assert_select "tbody tr td", text: student.name
+    assert_select ".results-exercise", count: 1
+    assert_select ".results-exercise-card", count: 1
+    assert_select ".results-exercise .result-status", text: "Em andamento"
     assert_not_includes response.body, other_student.name
-    assert_select "a[href='#{exercise_attempt_path(own_attempt)}']", text: "Ver", count: 1
+    assert_select "a[href='#{exercise_attempt_path(own_attempt)}']", text: "Detalhes", count: 1
     assert_select "a[href='#{exercise_attempt_path(other_attempt)}']", count: 0
   end
 
@@ -582,6 +583,8 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     get exercise_attempt_url(attempt)
     assert_response :success
     assert_includes response.body, "1 de 2 palavras corretas"
+    assert_select "li.attempt-question-card", count: 2
+    assert_select ".attempt-result-count strong", text: "1 de 2 palavras corretas"
     assert_includes response.body, "XP concedido nesta tentativa: 5"
     assert_not_includes response.body, "APPLE"
     assert_not_includes response.body, "PEAR"

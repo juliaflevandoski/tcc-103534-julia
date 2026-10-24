@@ -27,7 +27,10 @@ module Exercises
             student_id: student.id,
             activity_exercise_id: activity_exercise.id
           ).exists?
-          attempt.correct = grade.correct_snapshot.merge("xp_award_claimed" => !prior_attempt)
+          attempt.correct = grade.correct_snapshot.merge(
+            "xp_award_claimed" => !prior_attempt,
+            "points_possible" => activity_exercise.points.to_i
+          )
           attempt.save!
           if !prior_attempt && grade.score.positive?
             student_stat.update!(xp: student_stat.xp + grade.score)
