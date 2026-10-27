@@ -1,6 +1,6 @@
 <%= render "shared/errors", record: exercise %>
 <% memory_image_urls = exercise.memory_images_attachments.to_h { |attachment| [attachment.blob_id.to_s, rails_blob_path(attachment.blob, only_path: true)] } %>
-<%= form_with model: exercise, multipart: true, data: { controller: "exercise-form", action: "submit->exercise-form#prepareObject", exercise_form_crossword_preview_url_value: crossword_preview_exercises_path, exercise_form_memory_game_image_urls_value: memory_image_urls.to_json } do |form| %>
+<%= form_with model: exercise, multipart: true, data: { controller: "exercise-form", action: "submit->exercise-form#prepareObject", exercise_form_crossword_preview_url_value: crossword_preview_exercises_path, exercise_form_quiz_generate_url_value: generate_quiz_exercises_path, exercise_form_fill_blanks_generate_url_value: generate_fill_blanks_exercises_path, exercise_form_ordering_generate_url_value: generate_ordering_exercises_path, exercise_form_crossword_generate_url_value: generate_crossword_exercises_path, exercise_form_memory_game_generate_url_value: generate_memory_game_exercises_path, exercise_form_memory_game_image_urls_value: memory_image_urls.to_json } do |form| %>
 	<%= form.label :title, "Título" %>
 	<%= form.text_field :title, data: { exercise_form_target: "title" } %>
 
@@ -17,6 +17,37 @@
 	<%= form.hidden_field :object, value: exercise.object.to_json, data: { exercise_form_target: "objectInput" } %>
 
 	<section data-exercise-form-target="quizFields" hidden>
+		<h2>Editor do quiz</h2>
+		<button type="button" class="button quiz-ai-open" data-action="exercise-form#openQuizAiModal">Gerar com IA <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></button>
+		<dialog class="quiz-ai-modal" data-exercise-form-target="quizAiModal" data-action="cancel->exercise-form#keepQuizAiModalOpen" aria-labelledby="quiz-ai-title">
+			<h2 id="quiz-ai-title">Gerar quiz com IA</h2>
+			<p>O quiz gerado será apenas uma sugestão para revisão. Ele não será salvo automaticamente.</p>
+			<label for="quiz_ai_topic">Tema do quiz</label>
+			<%= text_field_tag :quiz_ai_topic, nil, data: { exercise_form_target: "quizAiTopic" } %>
+
+			<label for="quiz_ai_difficulty">Dificuldade</label>
+			<%= select_tag :quiz_ai_difficulty,
+				options_for_select([["Fácil", "easy"], ["Médio", "medium"], ["Difícil", "hard"]]),
+				{ prompt: "Selecione a dificuldade", data: { exercise_form_target: "quizAiDifficulty" } } %>
+
+			<label for="quiz_ai_question_count">Quantidade de questões</label>
+			<%= number_field_tag :quiz_ai_question_count, 5, min: 1, max: 20, data: { exercise_form_target: "quizAiQuestionCount" } %>
+
+			<fieldset class="quiz-ai-types">
+				<legend>Tipos de questão</legend>
+				<label><input type="checkbox" value="multiple_choice" data-exercise-form-target="quizAiQuestionType"> Múltipla escolha</label>
+				<label><input type="checkbox" value="true_false" data-exercise-form-target="quizAiQuestionType"> Verdadeiro ou falso</label>
+				<label><input type="checkbox" value="short_answer" data-exercise-form-target="quizAiQuestionType"> Resposta curta</label>
+			</fieldset>
+			<p class="errors" data-exercise-form-target="quizAiTypeError" role="alert" hidden></p>
+			<button type="button" class="button" data-exercise-form-target="quizAiGenerateButton" data-action="exercise-form#generateQuiz">Gerar sugestão</button>
+			<p data-exercise-form-target="quizAiStatus" role="status" aria-live="polite"></p>
+			<section class="quiz-ai-preview" data-exercise-form-target="quizAiPreview" aria-live="polite" hidden>
+				<h3>Prévia do quiz</h3>
+				<ol data-exercise-form-target="quizAiPreviewQuestions"></ol>
+				<button type="button" class="button" data-exercise-form-target="quizAiApplyButton" data-action="exercise-form#applyGeneratedQuiz" hidden>Aplicar ao editor</button>
+			</section>
+		</dialog>
 		<div data-exercise-form-target="questionsList"></div>
 		<template data-exercise-form-target="questionTemplate">
 			<fieldset class="quiz-question" data-question>
@@ -63,6 +94,27 @@
 	</section>
 
 	<section data-exercise-form-target="fillBlanksFields" hidden>
+		<button type="button" class="button" data-action="exercise-form#openFillBlanksAiModal">Gerar lacunas com IA</button>
+		<dialog class="quiz-ai-modal" data-exercise-form-target="fillBlanksAiModal" data-action="cancel->exercise-form#keepAiModalOpen" aria-labelledby="fill-blanks-ai-title">
+			<h2 id="fill-blanks-ai-title">Gerar exercício de lacunas com IA</h2>
+			<p>A sugestão será aplicada somente ao editor após revisão. Não será salva automaticamente.</p>
+			<label for="fill_blanks_ai_topic">Tema do exercício</label>
+			<%= text_field_tag :fill_blanks_ai_topic, nil, data: { exercise_form_target: "fillBlanksAiTopic" } %>
+			<label for="fill_blanks_ai_difficulty">Dificuldade</label>
+			<%= select_tag :fill_blanks_ai_difficulty,
+				options_for_select([["Fácil", "easy"], ["Médio", "medium"], ["Difícil", "hard"]]),
+				{ prompt: "Selecione a dificuldade", data: { exercise_form_target: "fillBlanksAiDifficulty" } } %>
+			<label for="fill_blanks_ai_count">Quantidade de lacunas</label>
+			<%= number_field_tag :fill_blanks_ai_count, 3, min: 1, max: 20, data: { exercise_form_target: "fillBlanksAiCount" } %>
+			<button type="button" class="button" data-exercise-form-target="fillBlanksAiGenerateButton" data-action="exercise-form#generateFillBlanks">Gerar sugestão</button>
+			<p data-exercise-form-target="fillBlanksAiStatus" role="status" aria-live="polite"></p>
+			<section class="quiz-ai-preview" data-exercise-form-target="fillBlanksAiPreview" hidden aria-live="polite">
+				<h3>Prévia</h3>
+				<p data-exercise-form-target="fillBlanksAiText"></p>
+				<ol data-exercise-form-target="fillBlanksAiAnswers"></ol>
+				<button type="button" class="button" data-exercise-form-target="fillBlanksAiApplyButton" data-action="exercise-form#applyGeneratedFillBlanks" hidden>Aplicar ao editor</button>
+			</section>
+		</dialog>
 		<%= label_tag :fill_text_template, "Texto do exercício" %>
 		<%= text_area_tag :fill_text_template, nil,
 			data: { exercise_form_target: "fillTextTemplate", action: "input->exercise-form#refreshBlanks" } %>
@@ -77,6 +129,31 @@
 	</section>
 
 	<section data-exercise-form-target="orderingFields" hidden>
+		<button type="button" class="button" data-action="exercise-form#openOrderingAiModal">Gerar ordenação com IA</button>
+		<dialog class="quiz-ai-modal" data-exercise-form-target="orderingAiModal" data-action="cancel->exercise-form#keepAiModalOpen" aria-labelledby="ordering-ai-title">
+			<h2 id="ordering-ai-title">Gerar exercício de Ordenação com IA</h2>
+			<p>A sugestão será aplicada somente ao editor após revisão. Não será salva automaticamente.</p>
+			<label for="ordering_ai_topic">Tema do exercício</label>
+			<%= text_field_tag :ordering_ai_topic, nil, data: { exercise_form_target: "orderingAiTopic" } %>
+			<label for="ordering_ai_difficulty">Dificuldade</label>
+			<%= select_tag :ordering_ai_difficulty,
+				options_for_select([["Fácil", "easy"], ["Médio", "medium"], ["Difícil", "hard"]]),
+				{ prompt: "Selecione a dificuldade", data: { exercise_form_target: "orderingAiDifficulty" } } %>
+			<label for="ordering_ai_item_type">Tipo dos itens</label>
+			<%= select_tag :ordering_ai_item_type,
+				options_for_select([["Palavras ou elementos", "words"], ["Números inteiros", "numbers"]]),
+				data: { exercise_form_target: "orderingAiItemType" } %>
+			<label for="ordering_ai_item_count">Quantidade de itens</label>
+			<%= number_field_tag :ordering_ai_item_count, 4, min: 2, max: 20, data: { exercise_form_target: "orderingAiItemCount" } %>
+			<button type="button" class="button" data-exercise-form-target="orderingAiGenerateButton" data-action="exercise-form#generateOrdering">Gerar sugestão</button>
+			<p data-exercise-form-target="orderingAiStatus" role="status" aria-live="polite"></p>
+			<section class="quiz-ai-preview" data-exercise-form-target="orderingAiPreview" hidden aria-live="polite">
+				<h3>Prévia na sequência correta</h3>
+				<p data-exercise-form-target="orderingAiInstructions"></p>
+				<ol data-exercise-form-target="orderingAiItems"></ol>
+				<button type="button" class="button" data-exercise-form-target="orderingAiApplyButton" data-action="exercise-form#applyGeneratedOrdering" hidden>Aplicar ao editor</button>
+			</section>
+		</dialog>
 		<%= label_tag :ordering_instructions, "Pergunta ou instrução" %>
 		<%= text_area_tag :ordering_instructions, nil, data: { exercise_form_target: "orderingInstructions" } %>
 
@@ -100,6 +177,26 @@
 	</section>
 
 	<section data-exercise-form-target="crosswordFields" hidden>
+		<button type="button" class="button" data-action="exercise-form#openCrosswordAiModal">Gerar palavras com IA</button>
+		<dialog class="quiz-ai-modal" data-exercise-form-target="crosswordAiModal" data-action="cancel->exercise-form#keepAiModalOpen" aria-labelledby="crossword-ai-title">
+			<h2 id="crossword-ai-title">Gerar palavras e pistas com IA</h2>
+			<p>A sugestão será aplicada somente ao editor após revisão. A grade será construída pelo Ludus.</p>
+			<label for="crossword_ai_topic">Tema da cruzadinha</label>
+			<%= text_field_tag :crossword_ai_topic, nil, data: { exercise_form_target: "crosswordAiTopic" } %>
+			<label for="crossword_ai_difficulty">Dificuldade</label>
+			<%= select_tag :crossword_ai_difficulty,
+				options_for_select([["Fácil", "easy"], ["Médio", "medium"], ["Difícil", "hard"]]),
+				{ prompt: "Selecione a dificuldade", data: { exercise_form_target: "crosswordAiDifficulty" } } %>
+			<label for="crossword_ai_word_count">Quantidade de palavras</label>
+			<%= number_field_tag :crossword_ai_word_count, 5, min: 2, max: 20, data: { exercise_form_target: "crosswordAiWordCount" } %>
+			<button type="button" class="button" data-exercise-form-target="crosswordAiGenerateButton" data-action="exercise-form#generateCrossword">Gerar sugestão</button>
+			<p data-exercise-form-target="crosswordAiStatus" role="status" aria-live="polite"></p>
+			<section class="quiz-ai-preview" data-exercise-form-target="crosswordAiPreview" hidden aria-live="polite">
+				<h3>Prévia de palavras e pistas</h3>
+				<ol data-exercise-form-target="crosswordAiWords"></ol>
+				<button type="button" class="button" data-exercise-form-target="crosswordAiApplyButton" data-action="exercise-form#applyGeneratedCrossword" hidden>Aplicar ao editor</button>
+			</section>
+		</dialog>
 		<%= label_tag :crossword_instructions, "Instruções" %>
 		<%= text_area_tag :crossword_instructions, nil,
 			data: { exercise_form_target: "crosswordInstructions", action: "input->exercise-form#invalidateCrosswordPreview" } %>
@@ -126,6 +223,31 @@
 	<fieldset data-exercise-form-target="memoryGameFields" hidden disabled>
 		<legend>Jogo da memória</legend>
 		<div data-exercise-form-target="memoryEditor">
+			<button type="button" class="button" data-action="exercise-form#openMemoryGameAiModal">Gerar pares com IA</button>
+			<dialog class="quiz-ai-modal" data-exercise-form-target="memoryGameAiModal" data-action="cancel->exercise-form#keepAiModalOpen" aria-labelledby="memory-ai-title">
+				<h2 id="memory-ai-title">Gerar pares para o jogo da memória</h2>
+				<p>A IA sugere conteúdo textual. Imagens não são geradas; serão adicionadas manualmente pelo professor.</p>
+				<label for="memory_ai_topic">Tema do jogo</label>
+				<%= text_field_tag :memory_ai_topic, nil, data: { exercise_form_target: "memoryAiTopic" } %>
+				<label for="memory_ai_difficulty">Dificuldade</label>
+				<%= select_tag :memory_ai_difficulty,
+					options_for_select([["Fácil", "easy"], ["Médio", "medium"], ["Difícil", "hard"]]),
+					{ prompt: "Selecione a dificuldade", data: { exercise_form_target: "memoryAiDifficulty" } } %>
+				<label for="memory_ai_pair_type">Tipo de associação</label>
+				<%= select_tag :memory_ai_pair_type,
+					options_for_select([ ["Palavra ↔ Palavra", "word_word"], ["Palavra ↔ Imagem", "word_image"], ["Imagem ↔ Imagem", "image_image"] ]),
+					data: { exercise_form_target: "memoryAiPairType" } %>
+				<label for="memory_ai_pair_count">Quantidade de pares</label>
+				<%= number_field_tag :memory_ai_pair_count, 4, min: 2, max: 20, data: { exercise_form_target: "memoryAiPairCount" } %>
+				<button type="button" class="button" data-exercise-form-target="memoryAiGenerateButton" data-action="exercise-form#generateMemoryGame">Gerar sugestão</button>
+				<p data-exercise-form-target="memoryAiStatus" role="status" aria-live="polite"></p>
+				<section class="quiz-ai-preview" data-exercise-form-target="memoryAiPreview" hidden aria-live="polite">
+					<h3>Prévia dos pares</h3>
+					<ol data-exercise-form-target="memoryAiPairs"></ol>
+					<button type="button" class="button" data-exercise-form-target="memoryAiApplyButton" data-action="exercise-form#applyGeneratedMemoryGame" hidden>Aplicar ao editor</button>
+				</section>
+			</dialog>
+			<p data-exercise-form-target="memoryAiImageNotice" hidden>Adicione uma imagem manualmente em cada campo visual antes de salvar.</p>
 			<%= label_tag :memory_game_instructions, "Instruções" %>
 			<%= text_area_tag :memory_game_instructions, nil, data: { exercise_form_target: "memoryInstructions" } %>
 
@@ -142,6 +264,7 @@
 						<label data-memory-word-field>Elemento da esquerda<input type="text" data-memory-word></label>
 						<label data-memory-image-field hidden>Imagem da esquerda
 							<input type="file" accept="image/png,image/jpeg,image/webp" data-memory-image>
+							<span data-memory-image-hint hidden></span>
 							<img data-memory-image-preview alt="Prévia da imagem" hidden>
 							<span data-memory-image-current hidden>Imagem atual</span>
 						</label>
@@ -150,6 +273,7 @@
 						<label data-memory-word-field>Elemento da direita<input type="text" data-memory-word></label>
 						<label data-memory-image-field hidden>Imagem da direita
 							<input type="file" accept="image/png,image/jpeg,image/webp" data-memory-image>
+							<span data-memory-image-hint hidden></span>
 							<img data-memory-image-preview alt="Prévia da imagem" hidden>
 							<span data-memory-image-current hidden>Imagem atual</span>
 						</label>

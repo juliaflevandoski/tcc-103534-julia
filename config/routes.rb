@@ -19,6 +19,11 @@ Rails.application.routes.draw do
   patch "activities/:activity_id/activity_exercises/reorder", to: "activity_exercises#reorder", as: :reorder_activity_exercises
   resources :exercises do
     post :crossword_preview, on: :collection
+    post :generate_quiz, on: :collection
+    post :generate_fill_blanks, on: :collection
+    post :generate_ordering, on: :collection
+    post :generate_crossword, on: :collection
+    post :generate_memory_game, on: :collection
   end
   resources :activity_exercises
   resources :exercise_attempts do

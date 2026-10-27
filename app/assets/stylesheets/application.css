@@ -25,6 +25,17 @@ th, td { padding: .75rem; border-bottom: 1px solid #d1d5db; text-align: left; ve
 .exercise-table tr[draggable="true"]:active { cursor: grabbing; }
 .exercise-table .fa-grip-vertical { color: #b8bec8; }
 [data-exercise-form-target="quizFields"] { margin-top: 1.25rem; padding-top: .5rem; border-top: 1px solid #d1d5db; }
+button.quiz-ai-open i { margin-left: .35rem; }
+dialog.quiz-ai-modal { box-sizing: border-box; width: min(36rem, calc(100vw - 2rem)); max-height: 85vh; overflow-y: auto; margin: auto; padding: 1.25rem; border: 1px solid #9ca3af; border-radius: 6px; background: #fff; color: #1f2937; }
+dialog.quiz-ai-modal::backdrop { background: rgb(15 23 42 / 55%); }
+dialog.quiz-ai-modal h2 { margin-top: 0; }
+dialog.quiz-ai-modal .quiz-ai-types { margin: 1rem 0; padding: .5rem .75rem; border: 1px solid #d1d5db; border-radius: 4px; }
+dialog.quiz-ai-modal .quiz-ai-types label { display: flex; align-items: center; gap: .5rem; margin: .5rem 0; font-weight: 400; }
+dialog.quiz-ai-modal .quiz-ai-types input[type="checkbox"] { flex: 0 0 auto; }
+.quiz-ai-preview { margin-top: 1rem; padding-top: .75rem; border-top: 1px solid #d1d5db; }
+.quiz-ai-preview li { margin: .5rem 0; }
+[data-exercise-form-target="quizAiStatus"][data-state="error"] { color: #b91c1c; }
+[data-exercise-form-target="quizAiStatus"][data-state="success"] { color: #166534; }
 [data-exercise-form-target="quizFields"] fieldset { margin: 1rem 0; border: 1px solid #d1d5db; border-radius: 4px; }
 .quiz-question { padding: 1rem; }
 .quiz-question > legend { padding: 0 .35rem; font-weight: 700; }
@@ -74,6 +85,7 @@ table.crossword-grid { width: auto; border-collapse: separate; border-spacing: 2
 .memory-pair > legend { padding: 0 .35rem; font-weight: 700; }
 .memory-pair > button { grid-column: 1 / -1; justify-self: start; margin-bottom: .75rem; }
 .memory-pair img { display: block; width: 5rem; height: 5rem; margin-top: .5rem; object-fit: cover; border-radius: 3px; }
+[data-memory-image-hint]:not([hidden]) { display: block; margin: .25rem 0; color: #475569; font-size: .9rem; font-weight: 400; }
 .memory-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); gap: .75rem; margin: 1rem 0; }
 .memory-card { display: grid; place-items: center; box-sizing: border-box; width: 100%; min-width: 0; aspect-ratio: 1 / 1; padding: .65rem; overflow: hidden; border: 2px solid #3f5b52; border-radius: 5px; background: #24483f; color: #fff; font-size: 1.15rem; font-weight: 700; text-align: center; overflow-wrap: anywhere; transition: background-color .18s, transform .18s; }
 button.memory-card { cursor: pointer; }

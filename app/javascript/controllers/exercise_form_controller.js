@@ -1,22 +1,44 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static values = { crosswordPreviewUrl: String, memoryGameImageUrls: Object }
+  static values = { crosswordPreviewUrl: String, quizGenerateUrl: String, fillBlanksGenerateUrl: String, orderingGenerateUrl: String, crosswordGenerateUrl: String, memoryGameGenerateUrl: String, memoryGameImageUrls: Object }
 
   static targets = [
-    "typeSelect", "objectInput", "quizFields", "rawFields", "rawObject", "questionsList",
+    "typeSelect", "objectInput", "quizFields", "quizAiModal", "quizAiTopic", "quizAiDifficulty",
+    "quizAiQuestionCount", "quizAiQuestionType", "quizAiTypeError", "quizAiGenerateButton",
+    "quizAiStatus", "quizAiPreview", "quizAiPreviewQuestions", "quizAiApplyButton",
+    "rawFields", "rawObject", "questionsList",
     "questionTemplate", "error", "fillBlanksFields", "fillTextTemplate", "blanksList",
-    "blankTemplate", "blankError", "orderingFields", "orderingInstructions", "orderingItemType",
-    "orderingItemsList", "orderingItemTemplate", "orderingError", "crosswordFields",
+    "blankTemplate", "blankError", "fillBlanksAiModal", "fillBlanksAiTopic", "fillBlanksAiDifficulty",
+    "fillBlanksAiCount", "fillBlanksAiGenerateButton", "fillBlanksAiStatus", "fillBlanksAiPreview",
+    "fillBlanksAiText", "fillBlanksAiAnswers", "fillBlanksAiApplyButton", "orderingFields",
+    "orderingAiModal", "orderingAiTopic", "orderingAiDifficulty", "orderingAiItemType", "orderingAiItemCount",
+    "orderingAiGenerateButton", "orderingAiStatus", "orderingAiPreview", "orderingAiInstructions",
+    "orderingAiItems", "orderingAiApplyButton", "orderingInstructions", "orderingItemType",
+    "orderingItemsList", "orderingItemTemplate", "orderingError", "crosswordFields", "crosswordAiModal",
+    "crosswordAiTopic", "crosswordAiDifficulty", "crosswordAiWordCount", "crosswordAiGenerateButton",
+    "crosswordAiStatus", "crosswordAiPreview", "crosswordAiWords", "crosswordAiApplyButton",
     "title", "crosswordInstructions", "crosswordWordsList", "crosswordWordTemplate", "crosswordSeed",
     "crosswordError", "crosswordPreview", "memoryGameFields", "memoryInstructions", "memoryPairType",
-    "memoryPairsList", "memoryPairTemplate", "memoryGameError", "memoryPreview", "memoryPreviewButton",
+    "memoryGameAiModal", "memoryAiTopic", "memoryAiDifficulty", "memoryAiPairType", "memoryAiPairCount",
+    "memoryAiGenerateButton", "memoryAiStatus", "memoryAiPreview", "memoryAiPairs", "memoryAiApplyButton", "memoryAiImageNotice",
+    "memoryAiImageNotice", "memoryPairsList", "memoryPairTemplate", "memoryGameError", "memoryPreview", "memoryPreviewButton",
     "memoryEditButton", "memoryEditor", "submitButton"
   ]
 
   connect() {
     this.object = this.parseObject(this.objectInputTarget.value)
     this.questionSequence = 0
+    this.generatedQuiz = null
+    this.quizAiRequestPending = false
+    this.generatedFillBlanks = null
+    this.fillBlanksAiRequestPending = false
+    this.generatedOrdering = null
+    this.orderingAiRequestPending = false
+    this.generatedCrossword = null
+    this.crosswordAiRequestPending = false
+    this.generatedMemoryGame = null
+    this.memoryGameAiRequestPending = false
     this.rawObjectTarget.value = JSON.stringify(this.object, null, 2)
     this.questionsForEditing().forEach((question) => this.addQuestion(null, question))
     if (!this.questionsListTarget.children.length) this.addQuestion()
@@ -77,6 +99,158 @@ export default class extends Controller {
     this.updateCrosswordSubmitState()
   }
 
+  openQuizAiModal(event) {
+    event.preventDefault()
+    if (!this.quizAiModalTarget.open) this.quizAiModalTarget.showModal()
+  }
+
+  keepQuizAiModalOpen(event) {
+    event.preventDefault()
+  }
+
+  keepAiModalOpen(event) {
+    event.preventDefault()
+  }
+
+  showQuizAiValidation(message, target) {
+    this.quizAiStatusTarget.dataset.state = "error"
+    this.quizAiStatusTarget.textContent = message
+    target.setAttribute("aria-invalid", "true")
+    target.focus()
+  }
+
+  async generateQuiz(event) {
+    event.preventDefault()
+    if (this.quizAiRequestPending) return
+
+    const topic = this.quizAiTopicTarget.value.trim()
+    const difficulty = this.quizAiDifficultyTarget.value
+    const questionCount = this.quizAiQuestionCountTarget
+    const questionTypes = this.quizAiQuestionTypeTargets.filter((input) => input.checked).map((input) => input.value)
+    this.quizAiTypeErrorTarget.hidden = true
+
+    if (!topic) {
+      return this.showQuizAiValidation("Informe o tema do quiz.", this.quizAiTopicTarget)
+    }
+    if (!difficulty) {
+      return this.showQuizAiValidation("Selecione a dificuldade do quiz.", this.quizAiDifficultyTarget)
+    }
+    const count = Number(questionCount.value)
+    if (!questionCount.value || !Number.isInteger(count) || count < 1 || count > 20) {
+      return this.showQuizAiValidation("Informe uma quantidade entre 1 e 20 questões.", questionCount)
+    }
+    if (!questionTypes.length) {
+      this.quizAiTypeErrorTarget.textContent = "Selecione pelo menos um tipo de questão."
+      this.quizAiTypeErrorTarget.hidden = false
+      this.quizAiQuestionTypeTargets[0]?.focus()
+      return
+    }
+    ;[ this.quizAiTopicTarget, this.quizAiDifficultyTarget, questionCount ].forEach((target) => target.removeAttribute("aria-invalid"))
+
+    this.quizAiRequestPending = true
+    this.generatedQuiz = null
+    this.quizAiApplyButtonTarget.hidden = true
+    this.quizAiPreviewTarget.hidden = true
+    this.quizAiPreviewQuestionsTarget.replaceChildren()
+    this.quizAiGenerateButtonTarget.disabled = true
+    this.quizAiGenerateButtonTarget.textContent = "Gerando..."
+    this.quizAiStatusTarget.dataset.state = "loading"
+    this.quizAiStatusTarget.textContent = "A geração pode levar alguns instantes."
+
+    try {
+      const response = await fetch(this.quizGenerateUrlValue, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || ""
+        },
+        body: JSON.stringify({
+          topic,
+          difficulty,
+          question_count: count,
+          question_types: questionTypes
+        })
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(payload?.errors?.[0]?.message || "Não foi possível gerar o quiz. Tente novamente.")
+
+      const quiz = payload?.data?.quiz
+      if (!quiz || !Array.isArray(quiz.questions) || !quiz.questions.length) {
+        throw new Error("A resposta recebida não contém um quiz válido.")
+      }
+
+      this.generatedQuiz = quiz
+      this.renderQuizPreview(quiz)
+      this.quizAiApplyButtonTarget.hidden = false
+      this.quizAiStatusTarget.dataset.state = "success"
+      this.quizAiStatusTarget.textContent = "Sugestão gerada. Revise as questões antes de aplicá-las ao editor."
+    } catch (error) {
+      this.quizAiStatusTarget.dataset.state = "error"
+      this.quizAiStatusTarget.textContent = error.message || "Não foi possível gerar o quiz. Tente novamente."
+    } finally {
+      this.quizAiRequestPending = false
+      this.quizAiGenerateButtonTarget.disabled = false
+      this.quizAiGenerateButtonTarget.textContent = "Gerar sugestão"
+    }
+  }
+
+  renderQuizPreview(quiz) {
+    this.quizAiPreviewQuestionsTarget.replaceChildren()
+    quiz.questions.forEach((question, index) => {
+      const item = document.createElement("li")
+      const statement = document.createElement("p")
+      statement.textContent = question.statement
+      item.append(statement)
+
+      if (question.question_type === "multiple_choice") {
+        const options = document.createElement("ul")
+        const correctIds = new Set(question.correct_option_ids || [])
+        question.options.forEach((option) => {
+          const optionItem = document.createElement("li")
+          optionItem.textContent = `${option.text}${correctIds.has(option.id) ? " (correta)" : ""}`
+          options.append(optionItem)
+        })
+        item.append(options)
+      }
+
+      const answer = document.createElement("p")
+      if (question.question_type === "true_false") {
+        answer.textContent = `Gabarito: ${question.correct_option_ids[0] === "true" ? "Verdadeiro" : "Falso"}`
+      } else if (question.question_type === "short_answer") {
+        answer.textContent = `Resposta esperada: ${question.correct_answer}`
+      }
+      if (answer.textContent) item.append(answer)
+      item.dataset.questionNumber = String(index + 1)
+      this.quizAiPreviewQuestionsTarget.append(item)
+    })
+    this.quizAiPreviewTarget.hidden = false
+  }
+
+  applyGeneratedQuiz(event) {
+    event.preventDefault()
+    if (!this.generatedQuiz || this.typeSelectTarget.value !== "quiz") return
+    if (this.quizHasExistingContent() && !window.confirm("Substituir as questões que já estão no editor pelo quiz gerado?")) return
+
+    this.questionsListTarget.replaceChildren()
+    this.generatedQuiz.questions.forEach((question) => this.addQuestion(null, question))
+    this.updateQuestionTitles()
+    this.errorTarget.hidden = true
+    this.quizAiApplyButtonTarget.hidden = true
+    this.quizAiStatusTarget.textContent = "Questões aplicadas ao editor. Revise e salve pelo fluxo normal."
+    this.quizAiModalTarget.close()
+  }
+
+  quizHasExistingContent() {
+    return [...this.questionsListTarget.querySelectorAll("[data-question]")].some((question) => {
+      const statement = question.querySelector("[data-question-statement]").value.trim()
+      const shortAnswer = question.querySelector("[data-question-short-answer-correct]").value.trim()
+      const options = [...question.querySelectorAll("[data-option-text]")].some((input) => input.value.trim())
+      const correct = [...question.querySelectorAll("[data-option-correct], [data-question-true-false-correct]")].some((input) => input.checked)
+      return statement || shortAnswer || options || correct
+    })
+  }
+
   addMemoryPair(event, pair = {}) {
     event?.preventDefault()
     const fragment = this.memoryPairTemplateTarget.content.cloneNode(true)
@@ -90,7 +264,10 @@ export default class extends Controller {
       const imageInput = sideElement.querySelector("[data-memory-image]")
       const imagePreview = sideElement.querySelector("[data-memory-image-preview]")
       const currentImage = sideElement.querySelector("[data-memory-image-current]")
+      const imageHint = sideElement.querySelector("[data-memory-image-hint]")
       wordInput.value = elements[side].content || ""
+      imageHint.textContent = elements[side].ai_description || ""
+      imageHint.hidden = !elements[side].ai_description
       imageInput.dataset.uploadKey = `${row.dataset.pairUiId}-${side}`
       imageInput.dataset.existingBlobId = elements[side].blob_id || ""
       imageInput.addEventListener("change", () => this.changeMemoryImage(imageInput, imagePreview, currentImage))
@@ -126,6 +303,7 @@ export default class extends Controller {
       image_image: [ "image", "image" ]
     }
     const expectedTypes = pairTypes[this.memoryPairTypeTarget.value] || pairTypes.word_word
+    this.memoryAiImageNoticeTarget.hidden = !expectedTypes.includes("image")
 
     this.memoryPairsListTarget.querySelectorAll("[data-memory-pair]").forEach((row) => {
       ["left", "right"].forEach((side, sideIndex) => {
@@ -139,6 +317,8 @@ export default class extends Controller {
           imageInput.value = ""
           imageInput.name = ""
           imageInput.dataset.existingBlobId = ""
+          sideElement.querySelector("[data-memory-image-hint]").textContent = ""
+          sideElement.querySelector("[data-memory-image-hint]").hidden = true
           sideElement.querySelector("[data-memory-image-preview]").hidden = true
           sideElement.querySelector("[data-memory-image-current]").hidden = true
         }
@@ -386,6 +566,381 @@ export default class extends Controller {
     this.savedBlanks = Object.fromEntries(markerIds.map((markerId) => [markerId, previousAnswers[markerId] || ""]))
   }
 
+  openFillBlanksAiModal(event) {
+    event.preventDefault()
+    if (!this.fillBlanksAiModalTarget.open) this.fillBlanksAiModalTarget.showModal()
+  }
+
+  async generateFillBlanks(event) {
+    event.preventDefault()
+    if (this.fillBlanksAiRequestPending) return
+
+    const topic = this.fillBlanksAiTopicTarget.value.trim()
+    const difficulty = this.fillBlanksAiDifficultyTarget.value
+    const countField = this.fillBlanksAiCountTarget
+    const count = Number(countField.value)
+    if (!topic) return this.showAiValidation("Informe o tema do exercício.", this.fillBlanksAiTopicTarget, this.fillBlanksAiStatusTarget)
+    if (!difficulty) return this.showAiValidation("Selecione a dificuldade.", this.fillBlanksAiDifficultyTarget, this.fillBlanksAiStatusTarget)
+    if (!countField.value || !Number.isInteger(count) || count < 1 || count > 20) {
+      return this.showAiValidation("Informe uma quantidade entre 1 e 20 lacunas.", countField, this.fillBlanksAiStatusTarget)
+    }
+
+    this.fillBlanksAiRequestPending = true
+    this.generatedFillBlanks = null
+    this.fillBlanksAiApplyButtonTarget.hidden = true
+    this.fillBlanksAiPreviewTarget.hidden = true
+    this.fillBlanksAiGenerateButtonTarget.disabled = true
+    this.fillBlanksAiGenerateButtonTarget.textContent = "Gerando..."
+    this.fillBlanksAiStatusTarget.dataset.state = "loading"
+    this.fillBlanksAiStatusTarget.textContent = "A geração pode levar alguns instantes."
+
+    try {
+      const response = await fetch(this.fillBlanksGenerateUrlValue, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || ""
+        },
+        body: JSON.stringify({ topic, difficulty, blank_count: count })
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(payload?.errors?.[0]?.message || "Não foi possível gerar as lacunas. Tente novamente.")
+
+      const draft = payload?.data?.draft
+      if (!draft || typeof draft.text_template !== "string" || !draft.blanks || typeof draft.blanks !== "object") {
+        throw new Error("A resposta recebida não contém um exercício de lacunas válido.")
+      }
+
+      this.generatedFillBlanks = draft
+      this.renderFillBlanksPreview(draft)
+      this.fillBlanksAiApplyButtonTarget.hidden = false
+      this.fillBlanksAiStatusTarget.dataset.state = "success"
+      this.fillBlanksAiStatusTarget.textContent = "Sugestão gerada. Revise as lacunas e respostas antes de aplicá-las."
+    } catch (error) {
+      this.fillBlanksAiStatusTarget.dataset.state = "error"
+      this.fillBlanksAiStatusTarget.textContent = error.message || "Não foi possível gerar as lacunas. Tente novamente."
+    } finally {
+      this.fillBlanksAiRequestPending = false
+      this.fillBlanksAiGenerateButtonTarget.disabled = false
+      this.fillBlanksAiGenerateButtonTarget.textContent = "Gerar sugestão"
+    }
+  }
+
+  renderFillBlanksPreview(draft) {
+    this.fillBlanksAiTextTarget.textContent = draft.text_template
+    this.fillBlanksAiAnswersTarget.replaceChildren()
+    Object.entries(draft.blanks).forEach(([id, answer]) => {
+      const item = document.createElement("li")
+      item.textContent = `Lacuna ${id}: ${answer}`
+      this.fillBlanksAiAnswersTarget.append(item)
+    })
+    this.fillBlanksAiPreviewTarget.hidden = false
+  }
+
+  applyGeneratedFillBlanks(event) {
+    event.preventDefault()
+    if (!this.generatedFillBlanks || this.typeSelectTarget.value !== "fill_blanks") return
+    const hasExistingContent = this.fillTextTemplateTarget.value.trim() ||
+      [...this.blanksListTarget.querySelectorAll("[data-blank-answer]")].some((input) => input.value.trim())
+    if (hasExistingContent && !window.confirm("Substituir o texto e as respostas atuais pelas lacunas geradas?")) return
+
+    this.fillTextTemplateTarget.value = this.generatedFillBlanks.text_template
+    this.blanksListTarget.replaceChildren()
+    this.savedBlanks = { ...this.generatedFillBlanks.blanks }
+    this.refreshBlanks()
+    this.blankErrorTarget.hidden = true
+    this.fillBlanksAiModalTarget.close()
+  }
+
+  openOrderingAiModal(event) {
+    event.preventDefault()
+    if (!this.orderingAiModalTarget.open) this.orderingAiModalTarget.showModal()
+  }
+
+  async generateOrdering(event) {
+    event.preventDefault()
+    if (this.orderingAiRequestPending) return
+
+    const topic = this.orderingAiTopicTarget.value.trim()
+    const difficulty = this.orderingAiDifficultyTarget.value
+    const itemType = this.orderingAiItemTypeTarget.value
+    const countField = this.orderingAiItemCountTarget
+    const itemCount = Number(countField.value)
+    if (!topic) return this.showAiValidation("Informe o tema do exercício.", this.orderingAiTopicTarget, this.orderingAiStatusTarget)
+    if (!difficulty) return this.showAiValidation("Selecione a dificuldade.", this.orderingAiDifficultyTarget, this.orderingAiStatusTarget)
+    if (!countField.value || !Number.isInteger(itemCount) || itemCount < 2 || itemCount > 20) {
+      return this.showAiValidation("Informe uma quantidade entre 2 e 20 itens.", countField, this.orderingAiStatusTarget)
+    }
+
+    this.orderingAiRequestPending = true
+    this.generatedOrdering = null
+    this.orderingAiApplyButtonTarget.hidden = true
+    this.orderingAiPreviewTarget.hidden = true
+    this.orderingAiGenerateButtonTarget.disabled = true
+    this.orderingAiGenerateButtonTarget.textContent = "Gerando..."
+    this.orderingAiStatusTarget.dataset.state = "loading"
+    this.orderingAiStatusTarget.textContent = "A geração pode levar alguns instantes."
+
+    try {
+      const response = await fetch(this.orderingGenerateUrlValue, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || ""
+        },
+        body: JSON.stringify({ topic, difficulty, item_count: itemCount, item_type: itemType })
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(payload?.errors?.[0]?.message || "Não foi possível gerar a ordenação. Tente novamente.")
+
+      const draft = payload?.data?.draft
+      if (!draft || !Array.isArray(draft.items) || !Array.isArray(draft.correct_order)) {
+        throw new Error("A resposta recebida não contém uma Ordenação válida.")
+      }
+
+      this.generatedOrdering = draft
+      this.renderOrderingPreview(draft)
+      this.orderingAiApplyButtonTarget.hidden = false
+      this.orderingAiStatusTarget.dataset.state = "success"
+      this.orderingAiStatusTarget.textContent = "Sugestão gerada na sequência correta. Revise antes de aplicá-la."
+    } catch (error) {
+      this.orderingAiStatusTarget.dataset.state = "error"
+      this.orderingAiStatusTarget.textContent = error.message || "Não foi possível gerar a ordenação. Tente novamente."
+    } finally {
+      this.orderingAiRequestPending = false
+      this.orderingAiGenerateButtonTarget.disabled = false
+      this.orderingAiGenerateButtonTarget.textContent = "Gerar sugestão"
+    }
+  }
+
+  renderOrderingPreview(draft) {
+    this.orderingAiInstructionsTarget.textContent = draft.instructions
+    this.orderingAiItemsTarget.replaceChildren()
+    const itemsById = new Map(draft.items.map((item) => [ item.id, item ]))
+    draft.correct_order.forEach((id) => {
+      const item = itemsById.get(id)
+      if (!item) return
+
+      const row = document.createElement("li")
+      row.textContent = item.label
+      this.orderingAiItemsTarget.append(row)
+    })
+    this.orderingAiPreviewTarget.hidden = false
+  }
+
+  applyGeneratedOrdering(event) {
+    event.preventDefault()
+    if (!this.generatedOrdering || this.typeSelectTarget.value !== "ordering") return
+    const hasExistingContent = this.orderingInstructionsTarget.value.trim() ||
+      [...this.orderingItemsListTarget.querySelectorAll("[data-ordering-item-value]")].some((input) => input.value.trim())
+    if (hasExistingContent && !window.confirm("Substituir as instruções e os itens atuais pela Ordenação gerada?")) return
+
+    this.orderingInstructionsTarget.value = this.generatedOrdering.instructions
+    this.orderingItemTypeTarget.value = this.generatedOrdering.item_type
+    this.orderingItemsListTarget.replaceChildren()
+    this.generatedOrdering.items.forEach((item) => this.appendOrderingItem(item))
+    this.updateOrderingItemNumbers()
+    this.changeOrderingItemType()
+    this.orderingErrorTarget.hidden = true
+    this.orderingAiModalTarget.close()
+  }
+
+  openCrosswordAiModal(event) {
+    event.preventDefault()
+    if (!this.crosswordAiModalTarget.open) this.crosswordAiModalTarget.showModal()
+  }
+
+  async generateCrossword(event) {
+    event.preventDefault()
+    if (this.crosswordAiRequestPending) return
+
+    const topic = this.crosswordAiTopicTarget.value.trim()
+    const difficulty = this.crosswordAiDifficultyTarget.value
+    const countField = this.crosswordAiWordCountTarget
+    const wordCount = Number(countField.value)
+    if (!topic) return this.showAiValidation("Informe o tema da cruzadinha.", this.crosswordAiTopicTarget, this.crosswordAiStatusTarget)
+    if (!difficulty) return this.showAiValidation("Selecione a dificuldade.", this.crosswordAiDifficultyTarget, this.crosswordAiStatusTarget)
+    if (!countField.value || !Number.isInteger(wordCount) || wordCount < 2 || wordCount > 20) {
+      return this.showAiValidation("Informe uma quantidade entre 2 e 20 palavras.", countField, this.crosswordAiStatusTarget)
+    }
+
+    this.crosswordAiRequestPending = true
+    this.generatedCrossword = null
+    this.crosswordAiApplyButtonTarget.hidden = true
+    this.crosswordAiPreviewTarget.hidden = true
+    this.crosswordAiGenerateButtonTarget.disabled = true
+    this.crosswordAiGenerateButtonTarget.textContent = "Gerando..."
+    this.crosswordAiStatusTarget.dataset.state = "loading"
+    this.crosswordAiStatusTarget.textContent = "A geração e a montagem da grade podem levar alguns instantes."
+
+    try {
+      const response = await fetch(this.crosswordGenerateUrlValue, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || ""
+        },
+        body: JSON.stringify({ topic, difficulty, word_count: wordCount })
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(payload?.errors?.[0]?.message || "Não foi possível gerar a cruzadinha. Tente novamente.")
+
+      const draft = payload?.data?.draft
+      if (!draft || !Array.isArray(draft.words) || !draft.grid || !Number.isInteger(draft.layout_seed)) {
+        throw new Error("A resposta recebida não contém uma cruzadinha válida.")
+      }
+
+      this.generatedCrossword = draft
+      this.renderCrosswordAiPreview(draft)
+      this.crosswordAiApplyButtonTarget.hidden = false
+      this.crosswordAiStatusTarget.dataset.state = "success"
+      this.crosswordAiStatusTarget.textContent = "Palavras e pistas geradas. Revise antes de aplicá-las ao editor."
+    } catch (error) {
+      this.crosswordAiStatusTarget.dataset.state = "error"
+      this.crosswordAiStatusTarget.textContent = error.message || "Não foi possível gerar a cruzadinha. Tente novamente."
+    } finally {
+      this.crosswordAiRequestPending = false
+      this.crosswordAiGenerateButtonTarget.disabled = false
+      this.crosswordAiGenerateButtonTarget.textContent = "Gerar sugestão"
+    }
+  }
+
+  renderCrosswordAiPreview(draft) {
+    this.crosswordAiWordsTarget.replaceChildren()
+    draft.words.forEach((word) => {
+      const item = document.createElement("li")
+      item.textContent = `${word.word} - ${word.clue}`
+      this.crosswordAiWordsTarget.append(item)
+    })
+    this.crosswordAiPreviewTarget.hidden = false
+  }
+
+  applyGeneratedCrossword(event) {
+    event.preventDefault()
+    if (!this.generatedCrossword || this.typeSelectTarget.value !== "crossword") return
+    const hasExistingContent = this.crosswordInstructionsTarget.value.trim() ||
+      [...this.crosswordWordsListTarget.querySelectorAll("[data-crossword-word]")].some((row) =>
+        row.querySelector("[data-crossword-word-value]").value.trim() || row.querySelector("[data-crossword-clue-value]").value.trim()
+      )
+    if (hasExistingContent && !window.confirm("Substituir as palavras e pistas atuais pela cruzadinha gerada?")) return
+
+    this.crosswordInstructionsTarget.value = this.generatedCrossword.instructions
+    this.crosswordWordsListTarget.replaceChildren()
+    this.generatedCrossword.words.forEach((word) => this.addCrosswordWord(null, word))
+    this.crosswordSeedTarget.value = this.generatedCrossword.layout_seed
+    this.crosswordPreviewValid = true
+    this.displayCrosswordPreview(this.generatedCrossword)
+    this.updateCrosswordSubmitState()
+    this.crosswordAiModalTarget.close()
+  }
+
+  openMemoryGameAiModal(event) {
+    event.preventDefault()
+    if (!this.memoryGameAiModalTarget.open) this.memoryGameAiModalTarget.showModal()
+  }
+
+  async generateMemoryGame(event) {
+    event.preventDefault()
+    if (this.memoryGameAiRequestPending) return
+
+    const topic = this.memoryAiTopicTarget.value.trim()
+    const difficulty = this.memoryAiDifficultyTarget.value
+    const pairType = this.memoryAiPairTypeTarget.value
+    const countField = this.memoryAiPairCountTarget
+    const pairCount = Number(countField.value)
+    if (!topic) return this.showAiValidation("Informe o tema do jogo.", this.memoryAiTopicTarget, this.memoryAiStatusTarget)
+    if (!difficulty) return this.showAiValidation("Selecione a dificuldade.", this.memoryAiDifficultyTarget, this.memoryAiStatusTarget)
+    if (!countField.value || !Number.isInteger(pairCount) || pairCount < 2 || pairCount > 20) {
+      return this.showAiValidation("Informe uma quantidade entre 2 e 20 pares.", countField, this.memoryAiStatusTarget)
+    }
+
+    this.memoryGameAiRequestPending = true
+    this.generatedMemoryGame = null
+    this.memoryAiApplyButtonTarget.hidden = true
+    this.memoryAiPreviewTarget.hidden = true
+    this.memoryAiGenerateButtonTarget.disabled = true
+    this.memoryAiGenerateButtonTarget.textContent = "Gerando..."
+    this.memoryAiStatusTarget.dataset.state = "loading"
+    this.memoryAiStatusTarget.textContent = "A geração pode levar alguns instantes."
+
+    try {
+      const response = await fetch(this.memoryGameGenerateUrlValue, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || ""
+        },
+        body: JSON.stringify({ topic, difficulty, pair_count: pairCount, pair_type: pairType })
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(payload?.errors?.[0]?.message || "Não foi possível gerar os pares. Tente novamente.")
+
+      const draft = payload?.data?.draft
+      if (!draft || !Array.isArray(draft.pairs) || draft.pairs.length !== pairCount) {
+        throw new Error("A resposta recebida não contém pares válidos.")
+      }
+
+      this.generatedMemoryGame = draft
+      this.renderMemoryGamePreview(draft)
+      this.memoryAiApplyButtonTarget.hidden = false
+      this.memoryAiStatusTarget.dataset.state = "success"
+      this.memoryAiStatusTarget.textContent = "Pares gerados. Revise as relações antes de aplicá-las ao editor."
+    } catch (error) {
+      this.memoryAiStatusTarget.dataset.state = "error"
+      this.memoryAiStatusTarget.textContent = error.message || "Não foi possível gerar os pares. Tente novamente."
+    } finally {
+      this.memoryGameAiRequestPending = false
+      this.memoryAiGenerateButtonTarget.disabled = false
+      this.memoryAiGenerateButtonTarget.textContent = "Gerar sugestão"
+    }
+  }
+
+  renderMemoryGamePreview(draft) {
+    this.memoryAiPairsTarget.replaceChildren()
+    draft.pairs.forEach((pair) => {
+      const item = document.createElement("li")
+      item.textContent = [ "left", "right" ].map((side) => {
+        const element = pair[side]
+        return element.type === "word" ? element.content : `[Imagem a adicionar: ${element.ai_description}]`
+      }).join(" ↔ ")
+      this.memoryAiPairsTarget.append(item)
+    })
+    this.memoryAiPreviewTarget.hidden = false
+  }
+
+  applyGeneratedMemoryGame(event) {
+    event.preventDefault()
+    if (!this.generatedMemoryGame || this.typeSelectTarget.value !== "memory_game") return
+    const hasExistingContent = this.memoryInstructionsTarget.value.trim() ||
+      [...this.memoryPairsListTarget.querySelectorAll("[data-memory-pair]")].some((row) => {
+        const words = [...row.querySelectorAll("[data-memory-word]")].some((input) => input.value.trim())
+        const images = [...row.querySelectorAll("[data-memory-image]")].some((input) => input.files.length || input.dataset.existingBlobId)
+        return words || images
+      })
+    if (hasExistingContent && !window.confirm("Substituir as instruções e os pares atuais pelos pares gerados?")) return
+
+    this.memoryInstructionsTarget.value = this.generatedMemoryGame.instructions
+    this.memoryPairTypeTarget.value = this.generatedMemoryGame.pair_type
+    this.memoryPairsListTarget.replaceChildren()
+    this.generatedMemoryGame.pairs.forEach((pair) => this.addMemoryPair(null, pair))
+    this.changeMemoryPairType()
+    const requiresImages = this.generatedMemoryGame.pair_type !== "word_word"
+    this.memoryAiImageNoticeTarget.hidden = !requiresImages
+    this.memoryGameErrorTarget.hidden = true
+    this.memoryGameAiModalTarget.close()
+  }
+
+  showAiValidation(message, target, statusTarget) {
+    statusTarget.dataset.state = "error"
+    statusTarget.textContent = message
+    target.setAttribute("aria-invalid", "true")
+    target.focus()
+  }
+
   changeOrderingItemType() {
     const isNumeric = this.orderingItemTypeTarget.value === "numbers"
     this.orderingItemsListTarget.querySelectorAll("[data-ordering-item-value]").forEach((input) => {
@@ -612,7 +1167,12 @@ export default class extends Controller {
         this.crosswordErrorTarget.hidden = false
         return
       }
-      this.objectInputTarget.value = JSON.stringify(this.crosswordInput())
+      const crossword = this.crosswordInput()
+      this.objectInputTarget.value = JSON.stringify({
+        instructions: crossword.instructions,
+        layout_seed: Number(crossword.seed),
+        words: crossword.words
+      })
       return
     }
 

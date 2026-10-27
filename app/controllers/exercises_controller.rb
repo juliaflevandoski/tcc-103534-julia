@@ -1,4 +1,16 @@
 class ExercisesController < ApplicationController
+  class_attribute :quiz_generator_service, default: Exercises::QuizGenerator
+  class_attribute :fill_blanks_generator_service, default: Exercises::FillBlanksGenerator
+  class_attribute :ordering_generator_service, default: Exercises::OrderingGenerator
+  class_attribute :crossword_generator_service, default: Exercises::CrosswordGenerator
+  class_attribute :memory_game_generator_service, default: Exercises::MemoryGameGenerator
+
+  skip_before_action :require_authentication, only: %i[generate_quiz generate_fill_blanks generate_ordering generate_crossword generate_memory_game]
+  before_action :require_teacher_for_quiz_generation, only: :generate_quiz
+  before_action :require_teacher_for_fill_blanks_generation, only: :generate_fill_blanks
+  before_action :require_teacher_for_ordering_generation, only: :generate_ordering
+  before_action :require_teacher_for_crossword_generation, only: :generate_crossword
+  before_action :require_teacher_for_memory_game_generation, only: :generate_memory_game
   before_action :set_exercise, only: %i[show edit update destroy]
 
   def index
@@ -55,6 +67,131 @@ class ExercisesController < ApplicationController
     end
   end
 
+  def generate_quiz
+    authorize Exercise, :create?
+    generation_params = params.permit(:topic, :difficulty, :question_count, question_types: [])
+    result = self.class.quiz_generator_service.call(
+      topic: generation_params[:topic],
+      difficulty: generation_params[:difficulty],
+      question_count: generation_params[:question_count],
+      question_types: generation_params[:question_types] || []
+    )
+
+    if result.success?
+      render json: { data: { quiz: result.quiz }, errors: [] }, status: :ok
+    else
+      render json: { data: nil, errors: [ { field: "generation", message: result.message } ] },
+        status: quiz_generation_status(result.error_code)
+    end
+  rescue Pundit::NotAuthorizedError
+    render json: { data: nil, errors: [ { field: "base", message: "Somente professores podem gerar quizzes." } ] },
+      status: :forbidden
+  rescue StandardError => error
+    Rails.logger.error("Quiz AI generation failed: #{error.class}")
+    render json: { data: nil, errors: [ { field: "generation", message: "Não foi possível gerar o quiz agora. Tente novamente." } ] },
+      status: :internal_server_error
+  end
+
+  def generate_fill_blanks
+    authorize Exercise, :create?
+    generation_params = params.except(:exercise).permit(:topic, :difficulty, :blank_count)
+    result = self.class.fill_blanks_generator_service.call(
+      topic: generation_params[:topic],
+      difficulty: generation_params[:difficulty],
+      blank_count: generation_params[:blank_count]
+    )
+
+    if result.success?
+      render json: { data: { draft: result.draft }, errors: [] }, status: :ok
+    else
+      render json: { data: nil, errors: [ { field: "generation", message: result.message } ] },
+        status: quiz_generation_status(result.error_code)
+    end
+  rescue Pundit::NotAuthorizedError
+    render json: { data: nil, errors: [ { field: "base", message: "Somente professores podem gerar exercícios." } ] },
+      status: :forbidden
+  rescue StandardError => error
+    internal_frame = error.backtrace&.find { |frame| frame.include?("app/") || frame.include?("app\\") }
+    error_name = error.name if error.respond_to?(:name)
+    Rails.logger.error("AI fill blanks generation failed: #{error.class}##{error_name} at #{internal_frame}")
+    render json: { data: nil, errors: [ { field: "generation", message: "Não foi possível gerar o exercício agora. Tente novamente." } ] },
+      status: :internal_server_error
+  end
+
+  def generate_ordering
+    authorize Exercise, :create?
+    generation_params = params.permit(:topic, :difficulty, :item_count, :item_type)
+    result = self.class.ordering_generator_service.call(
+      topic: generation_params[:topic],
+      difficulty: generation_params[:difficulty],
+      item_count: generation_params[:item_count],
+      item_type: generation_params[:item_type]
+    )
+
+    if result.success?
+      render json: { data: { draft: result.draft }, errors: [] }, status: :ok
+    else
+      render json: { data: nil, errors: [ { field: "generation", message: result.message } ] },
+        status: quiz_generation_status(result.error_code)
+    end
+  rescue Pundit::NotAuthorizedError
+    render json: { data: nil, errors: [ { field: "base", message: "Somente professores podem gerar exercícios." } ] },
+      status: :forbidden
+  rescue StandardError => error
+    Rails.logger.error("AI ordering generation failed: #{error.class}")
+    render json: { data: nil, errors: [ { field: "generation", message: "Não foi possível gerar o exercício agora. Tente novamente." } ] },
+      status: :internal_server_error
+  end
+
+  def generate_crossword
+    authorize Exercise, :create?
+    generation_params = params.permit(:topic, :difficulty, :word_count)
+    result = self.class.crossword_generator_service.call(
+      topic: generation_params[:topic],
+      difficulty: generation_params[:difficulty],
+      word_count: generation_params[:word_count]
+    )
+
+    if result.success?
+      render json: { data: { draft: result.draft }, errors: [] }, status: :ok
+    else
+      render json: { data: nil, errors: [ { field: "generation", message: result.message } ] },
+        status: quiz_generation_status(result.error_code)
+    end
+  rescue Pundit::NotAuthorizedError
+    render json: { data: nil, errors: [ { field: "base", message: "Somente professores podem gerar exercícios." } ] },
+      status: :forbidden
+  rescue StandardError => error
+    Rails.logger.error("AI crossword generation failed: #{error.class}")
+    render json: { data: nil, errors: [ { field: "generation", message: "Não foi possível gerar o exercício agora. Tente novamente." } ] },
+      status: :internal_server_error
+  end
+
+  def generate_memory_game
+    authorize Exercise, :create?
+    generation_params = params.permit(:topic, :difficulty, :pair_count, :pair_type)
+    result = self.class.memory_game_generator_service.call(
+      topic: generation_params[:topic],
+      difficulty: generation_params[:difficulty],
+      pair_count: generation_params[:pair_count],
+      pair_type: generation_params[:pair_type]
+    )
+
+    if result.success?
+      render json: { data: { draft: result.draft }, errors: [] }, status: :ok
+    else
+      render json: { data: nil, errors: [ { field: "generation", message: result.message } ] },
+        status: quiz_generation_status(result.error_code)
+    end
+  rescue Pundit::NotAuthorizedError
+    render json: { data: nil, errors: [ { field: "base", message: "Somente professores podem gerar exercícios." } ] },
+      status: :forbidden
+  rescue StandardError => error
+    Rails.logger.error("AI memory game generation failed: #{error.class}")
+    render json: { data: nil, errors: [ { field: "generation", message: "Não foi possível gerar o exercício agora. Tente novamente." } ] },
+      status: :internal_server_error
+  end
+
   def create
     attributes = exercise_params
     @exercise = current_teacher.exercises.build(attributes)
@@ -101,6 +238,56 @@ class ExercisesController < ApplicationController
   end
 
   private
+
+  def require_teacher_for_quiz_generation
+    return if current_teacher
+
+    message = current_student ? "Somente professores podem gerar quizzes." : "Faça login como professor para gerar quizzes."
+    render json: { data: nil, errors: [ { field: "base", message: } ] },
+      status: current_student ? :forbidden : :unauthorized
+  end
+
+  def require_teacher_for_fill_blanks_generation
+    return if current_teacher
+
+    message = current_student ? "Somente professores podem gerar exercícios." : "Faça login como professor para gerar exercícios."
+    render json: { data: nil, errors: [ { field: "base", message: } ] },
+      status: current_student ? :forbidden : :unauthorized
+  end
+
+  def require_teacher_for_ordering_generation
+    return if current_teacher
+
+    message = current_student ? "Somente professores podem gerar exercícios." : "Faça login como professor para gerar exercícios."
+    render json: { data: nil, errors: [ { field: "base", message: } ] },
+      status: current_student ? :forbidden : :unauthorized
+  end
+
+  def require_teacher_for_crossword_generation
+    return if current_teacher
+
+    message = current_student ? "Somente professores podem gerar exercícios." : "Faça login como professor para gerar exercícios."
+    render json: { data: nil, errors: [ { field: "base", message: } ] },
+      status: current_student ? :forbidden : :unauthorized
+  end
+
+  def require_teacher_for_memory_game_generation
+    return if current_teacher
+
+    message = current_student ? "Somente professores podem gerar exercícios." : "Faça login como professor para gerar exercícios."
+    render json: { data: nil, errors: [ { field: "base", message: } ] },
+      status: current_student ? :forbidden : :unauthorized
+  end
+
+  def quiz_generation_status(error_code)
+    case error_code
+    when :invalid_input then :unprocessable_entity
+    when :timeout then :gateway_timeout
+    when :rate_limited then :too_many_requests
+    when :service_unavailable then :service_unavailable
+    else :bad_gateway
+    end
+  end
 
   def set_exercise
     @exercise = Exercise.active.find(params[:id])
