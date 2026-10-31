@@ -1,4 +1,6 @@
 class ExerciseAttemptsController < ApplicationController
+  include StudentPlayerContext
+
   before_action :set_exercise_attempt, only: %i[edit update destroy memory_game_turn]
   before_action :set_exercise_attempt_for_show, only: :show
 
@@ -33,6 +35,7 @@ class ExerciseAttemptsController < ApplicationController
       activity.active? && activity.published? && activity.school_class.active? &&
         activity.school_class.class_students.active.exists?(student_id: current_student.id)
     end
+    @next_activity_exercise = authorized_next_activity_exercise if current_student && @return_to_activity
   end
 
   def new
@@ -154,21 +157,26 @@ class ExerciseAttemptsController < ApplicationController
     permitted = params.require(:exercise_attempt).permit(:activity_exercise_id)
     @activity_exercise = ActivityExercise.active.includes(:activity, :exercise).find(permitted[:activity_exercise_id])
     authorize @activity_exercise, :show?
-    @activity_exercise.exercise.validate!
-    game = Exercises::MemoryGamePlay.start(
-      object: @activity_exercise.exercise.object,
-      points: @activity_exercise.points,
-      attached_image_blob_ids: @activity_exercise.exercise.memory_images_attachments.pluck(:blob_id)
-    )
-    @exercise_attempt = ExerciseAttempt.new(
-      student: current_student,
-      activity_exercise: @activity_exercise,
-      answer: game.fetch("answer"),
-      correct: game.fetch("correct"),
-      score: 0
-    )
-    authorize @exercise_attempt
-    @exercise_attempt.save!
+    # A leitura do exercício e a gravação da tentativa ficam na mesma transação de escrita. Assim, a edição de
+    # imagens do professor ou enxerga esta tentativa (e preserva suas imagens) ou termina antes e esta lê o JSON novo.
+    ExerciseAttempt.transaction do
+      exercise = @activity_exercise.exercise.reload
+      exercise.validate!
+      game = Exercises::MemoryGamePlay.start(
+        object: exercise.object,
+        points: @activity_exercise.points,
+        attached_image_blob_ids: exercise.memory_images_attachments.pluck(:blob_id)
+      )
+      @exercise_attempt = ExerciseAttempt.new(
+        student: current_student,
+        activity_exercise: @activity_exercise,
+        answer: game.fetch("answer"),
+        correct: game.fetch("correct"),
+        score: 0
+      )
+      authorize @exercise_attempt
+      @exercise_attempt.save!
+    end
     redirect_to exercise_path(
       @activity_exercise.exercise,
       activity_exercise_id: @activity_exercise.id,
@@ -209,7 +217,7 @@ class ExerciseAttemptsController < ApplicationController
     @exercise_attempt = result.attempt
     redirect_to @exercise_attempt
   rescue Exercises::AttemptValidity::BlankResponse => error
-    redirect_to exercise_path(@activity_exercise.exercise, activity_exercise_id: @activity_exercise.id), alert: error.message
+    render_incomplete_submission(error.message, answers: permitted[:answers])
   rescue ActiveRecord::RecordNotFound, Pundit::NotAuthorizedError
     redirect_to root_path, alert: "Não foi possível enviar este Quiz."
   rescue ActiveRecord::RecordInvalid
@@ -238,7 +246,7 @@ class ExerciseAttemptsController < ApplicationController
     @exercise_attempt = result.attempt
     redirect_to @exercise_attempt
   rescue Exercises::AttemptValidity::BlankResponse => error
-    redirect_to exercise_path(@activity_exercise.exercise, activity_exercise_id: @activity_exercise.id), alert: error.message
+    render_incomplete_submission(error.message, answers: permitted[:answers])
   rescue ActiveRecord::RecordNotFound, Pundit::NotAuthorizedError
     redirect_to root_path, alert: "Não foi possível enviar este exercício."
   rescue ActiveRecord::RecordInvalid
@@ -256,22 +264,64 @@ class ExerciseAttemptsController < ApplicationController
   end
 
   def create_ordering_attempt
-    permitted = params.require(:exercise_attempt).permit(:activity_exercise_id, ordered_ids: [])
+    permitted = params.require(:exercise_attempt).permit(:activity_exercise_id, :sentences_json, ordered_ids: [])
     @activity_exercise = ActivityExercise.active.includes(:activity, :exercise).find(permitted[:activity_exercise_id])
     authorize @activity_exercise, :show?
+    ordering = @activity_exercise.exercise.object.deep_stringify_keys
+    sentences = parse_ordering_sentences(permitted[:sentences_json]) if ordering["format"] == Exercises::ExerciseContentValidator::MULTIPLE_SENTENCES_FORMAT
     result = Exercises::OrderingSubmission.call(
       activity_exercise: @activity_exercise,
       student: current_student,
-      ordered_ids: permitted[:ordered_ids] || []
+      ordered_ids: permitted[:ordered_ids] || [],
+      sentences:
     )
     @exercise_attempt = result.attempt
     redirect_to @exercise_attempt
   rescue Exercises::AttemptValidity::BlankResponse => error
-    redirect_to exercise_path(@activity_exercise.exercise, activity_exercise_id: @activity_exercise.id), alert: error.message
+    render_incomplete_submission(error.message, ordered_ids: permitted[:ordered_ids], sentences: sentences)
   rescue ActiveRecord::RecordNotFound, Pundit::NotAuthorizedError
     redirect_to root_path, alert: "Não foi possível enviar esta ordenação."
   rescue ActiveRecord::RecordInvalid
     redirect_to exercise_path(@activity_exercise.exercise, activity_exercise_id: @activity_exercise.id), alert: "Não foi possível registrar sua resposta."
+  end
+
+  # Reexibe o player com 422 e as respostas enviadas, sem criar tentativa nem expor o gabarito.
+  def render_incomplete_submission(message, answers: nil, cells: nil, ordered_ids: nil, sentences: nil)
+    @exercise = @activity_exercise.exercise
+    attempt = ActivityResults.official_attempt(activity_exercise: @activity_exercise, student: current_student)
+    @previous_official_attempt = attempt if attempt && policy(attempt).show?
+    @prefilled_answers = answers.respond_to?(:to_h) ? answers.to_h.transform_values(&:to_s) : {}
+    @prefilled_cells = cells.is_a?(Hash) ? cells : {}
+
+    if @exercise.ordering?
+      ordering = @exercise.object.deep_stringify_keys
+      @ordering_instructions = ordering.fetch("instructions", "")
+      if ordering["format"] == Exercises::ExerciseContentValidator::MULTIPLE_SENTENCES_FORMAT
+        submitted = Array(sentences).grep(Hash).index_by { |sentence| sentence["id"] }
+        @ordering_sentences = ordering_sentences_for_student(ordering).map do |sentence|
+          sentence.merge("items" => restore_item_order(sentence["items"], submitted.dig(sentence["id"], "ordered_ids")))
+        end
+      else
+        @ordering_items = restore_item_order(Array(ordering["items"]).shuffle, ordered_ids)
+      end
+    elsif @exercise.crossword?
+      @crossword_payload = crossword_student_payload(@exercise.object)
+    end
+
+    flash.now[:alert] = message
+    lookup_context.prefixes << "exercises"
+    render "exercises/show", status: :unprocessable_entity
+  end
+
+  def restore_item_order(items, submitted_ids)
+    known = Array(submitted_ids).filter_map { |id| items.find { |item| item["id"] == id } if id.is_a?(String) }.uniq
+    known + (items - known)
+  end
+
+  def parse_ordering_sentences(serialized_sentences)
+    JSON.parse(serialized_sentences)
+  rescue JSON::ParserError, TypeError
+    nil
   end
 
   def claim_memory_game_xp!(score)
@@ -319,7 +369,7 @@ class ExerciseAttemptsController < ApplicationController
 
     redirect_to @exercise_attempt
   rescue Exercises::AttemptValidity::BlankResponse => error
-    redirect_to exercise_path(@activity_exercise.exercise, activity_exercise_id: @activity_exercise.id), alert: error.message
+    render_incomplete_submission(error.message, cells: answer&.dig("cells"))
   rescue JSON::ParserError, ActiveRecord::RecordNotFound, Pundit::NotAuthorizedError
     redirect_to root_path, alert: "Não foi possível enviar esta cruzadinha."
   rescue ActiveRecord::RecordInvalid
@@ -342,6 +392,11 @@ class ExerciseAttemptsController < ApplicationController
       [ key, value.each_char.first.to_s ]
     end
     { "cells" => cells }
+  end
+
+  def authorized_next_activity_exercise
+    candidate = ActivityExercises::NextExercise.call(activity_exercise: @exercise_attempt.activity_exercise)
+    candidate if candidate && policy(candidate).show?
   end
 
   def set_exercise_attempt
@@ -370,7 +425,11 @@ class ExerciseAttemptsController < ApplicationController
     when "fill_blanks"
       [ correct["blanks"], "lacunas corretas" ]
     when "ordering"
-      [ correct["positions"], "itens corretos" ]
+      if exercise.object.deep_stringify_keys["format"] == Exercises::ExerciseContentValidator::MULTIPLE_SENTENCES_FORMAT
+        [ Array(correct["sentences"]).flat_map { |sentence| Array(sentence["positions"]) }, "palavras corretas" ]
+      else
+        [ correct["positions"], "itens corretos" ]
+      end
     when "crossword"
       [ correct["statuses"]&.values, "palavras corretas" ]
     end

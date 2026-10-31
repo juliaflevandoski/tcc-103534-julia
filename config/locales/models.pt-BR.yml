@@ -1,0 +1,96 @@
+pt-BR:
+  activerecord:
+    models:
+      activity: Aula
+      activity_exercise: Vínculo de exercício
+      class_post: Publicação
+      class_post_comment: Comentário
+      class_student: Matrícula
+      exercise: Exercício
+      exercise_attempt: Tentativa
+      school_class: Turma
+      student: Aluno
+      student_stat: Estatística do aluno
+      teacher: Professor
+    attributes:
+      activity:
+        class_id: Turma
+        published: Publicada
+        school_class: Turma
+        teacher: Professor
+        title: Título
+      activity_exercise:
+        activity: Aula
+        activity_id: Aula
+        exercise: Exercício
+        exercise_id: Exercício
+        points: Pontos
+        position: Posição
+      class_post:
+        body: Texto
+        school_class: Turma
+        teacher: Professor
+      class_post_comment:
+        author: Autor
+        author_type: Autor
+        body: Comentário
+        class_post: Publicação
+      class_student:
+        school_class: Turma
+        student: Aluno
+        student_id: Aluno
+      exercise:
+        description: Descrição
+        exercise_type: Tipo de exercício
+        object: Conteúdo
+        teacher: Professor
+        title: Título
+      exercise_attempt:
+        activity_exercise: Exercício da aula
+        answer: Resposta
+        correct: Gabarito
+        score: Pontuação
+        student: Aluno
+        time_spent: Tempo
+      school_class:
+        access_code: Código de acesso
+        description: Descrição
+        name: Nome
+        teacher: Professor
+        xp_points: XP da turma
+      student:
+        email: E-mail
+        name: Nome
+        password: Senha
+        password_confirmation: Confirmação da senha
+        username: Usuário
+      student_stat:
+        level: Nível
+        student: Aluno
+        xp: XP
+      teacher:
+        email: E-mail
+        name: Nome
+        password: Senha
+        password_confirmation: Confirmação da senha
+        username: Usuário
+    errors:
+      models:
+        activity:
+          attributes:
+            school_class:
+              format: "%{message}"
+              required: "Selecione a turma da aula."
+        class_post:
+          attributes:
+            teacher:
+              not_class_teacher: "deve ser o professor responsável pela turma"
+        class_post_comment:
+          attributes:
+            author_type:
+              inclusion: "deve ser um professor ou um aluno"
+        exercise:
+          attributes:
+            object:
+              # As mensagens do conteúdo já são frases completas em português.
+              format: "%{message}"

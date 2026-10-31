@@ -12,7 +12,7 @@
 					<td><%= activity.school_class.name %></td>
 					<td><%= activity.published? ? "Publicada" : "Rascunho" %></td>
 					<% if current_teacher %>
-						<td><%= link_to "Ver", activity %> | <%= link_to "Editar", edit_activity_path(activity) %> | <%= button_to "Desativar", activity, method: :delete, class: "button danger" %></td>
+						<td><%= link_to "Ver", activity %> | <%= link_to "Editar", edit_activity_path(activity) %> | <%= button_to "Desativar", activity, method: :delete, class: "button danger", form: { data: { turbo_confirm: "Desativar esta aula? Ela deixará de aparecer para os alunos." } } %></td>
 					<% end %>
 				</tr>
 			<% end %>

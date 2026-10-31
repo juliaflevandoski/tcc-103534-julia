@@ -48,6 +48,16 @@ class ActivityResults
     possible_points = points_possible(attempt:)
     return if possible_points.nil? || possible_points.to_i <= 0
 
+    exercise = attempt.activity_exercise.exercise
+    if exercise.ordering? && exercise.object.deep_stringify_keys["format"] == Exercises::ExerciseContentValidator::MULTIPLE_SENTENCES_FORMAT
+      correct = attempt.correct.to_h
+      positions_correct = correct["positions_correct"]
+      total_positions = correct["total_positions"]
+      return if !positions_correct.is_a?(Integer) || !total_positions.is_a?(Integer) || total_positions <= 0
+
+      return positions_correct.to_f / total_positions * 100
+    end
+
     attempt.score.to_f / possible_points * 100
   end
 
@@ -91,7 +101,7 @@ class ActivityResults
     return false unless activity.active? && activity.published? && school_class.active? && student.active?
     return false unless school_class.class_students.active.exists?(student_id: student.id)
 
-    required_exercises = activity.activity_exercises.active.includes(:exercise).to_a
+    required_exercises = activity.activity_exercises.active.joins(:exercise).merge(Exercise.active).includes(:exercise).to_a
     return false if required_exercises.empty?
 
     required_exercises.all? do |activity_exercise|

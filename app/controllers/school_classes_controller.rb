@@ -13,12 +13,11 @@ class SchoolClassesController < ApplicationController
   def show
     authorize @school_class
     @class_students = @school_class.class_students.active.includes(:student).order(:id)
-    @activities = @school_class.activities.active.includes(activity_exercises: :exercise).then do |activities|
+    @activities = @school_class.activities.active.then do |activities|
       current_teacher ? activities : activities.published
     end
-    return unless current_teacher
-
-    @available_exercises = current_teacher.exercises.active.order(:title)
+    @exercise_counts = ActivityExercise.active.joins(:exercise).merge(Exercise.active)
+      .where(activity_id: @activities.map(&:id)).group(:activity_id).count
   end
 
   def new
@@ -51,8 +50,16 @@ class SchoolClassesController < ApplicationController
 
   def join
     authorize SchoolClass, :join?
-    school_class = SchoolClass.active.find_by(access_code: params[:access_code])
-    if school_class && ClassStudent.find_or_initialize_by(student: current_student, school_class: school_class).update(active: true)
+    code = params[:access_code].to_s.strip.upcase
+    return redirect_to school_classes_path, alert: "Informe o código da turma." if code.blank?
+
+    school_class = SchoolClass.active.find_by(access_code: code)
+    return redirect_to school_classes_path, alert: "Código de turma inválido." unless school_class
+
+    membership = ClassStudent.find_or_initialize_by(student: current_student, school_class: school_class)
+    return redirect_to school_classes_path, notice: "Você já está nesta turma." if membership.persisted? && membership.active?
+
+    if membership.update(active: true)
       redirect_to school_classes_path, notice: "Você entrou na turma."
     else
       redirect_to school_classes_path, alert: "Código de turma inválido."

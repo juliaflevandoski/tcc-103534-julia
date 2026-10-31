@@ -1,7 +1,14 @@
 <main>
 	<h1><%= @activity.title %></h1>
-	<p>Turma: <%= @activity.school_class.name %></p>
+	<p>Turma: <%= link_to @activity.school_class.name, school_class_path(@activity.school_class) %></p>
+	<p><%= link_to "Voltar à turma", school_class_path(@activity.school_class), class: "button" %></p>
 	<p><%= @activity.published? ? "Publicada" : "Rascunho" %></p>
-	<% if current_teacher %><%= link_to "Editar", edit_activity_path(@activity), class: "button" %><% end %>
+	<% if current_student && @activity_exercises.any? %>
+		<% if @lesson_completed %>
+			<p><span class="result-status result-status--completed">Aula concluída</span></p>
+		<% else %>
+			<p><span class="result-status result-status--in-progress">Em andamento</span></p>
+		<% end %>
+	<% end %>	<% if current_teacher %><%= link_to "Editar", edit_activity_path(@activity), class: "button" %><% end %>
 	<%= render "exercise_assignments", activity: @activity, activity_exercises: @activity_exercises, available_exercises: @available_exercises, activity_exercise: @activity_exercise %>
 </main>

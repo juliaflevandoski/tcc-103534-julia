@@ -263,7 +263,93 @@ class ActivityResultsTest < ActiveSupport::TestCase
     assert ActivityResults.lesson_completed?(activity: @activity, student: @student)
   end
 
+  test "lesson completion ignores deactivated exercises and inactive links" do
+    active_link = create_quiz_link
+    unanswered_hidden = create_ordering_link
+    inactive_link = create_fill_blanks_link
+    unanswered_hidden.exercise.update!(active: false)
+    inactive_link.update!(active: false)
+
+    assert_not ActivityResults.lesson_completed?(activity: @activity, student: @student)
+    submit_quiz(active_link)
+    assert ActivityResults.lesson_completed?(activity: @activity, student: @student)
+  end
+
+  test "attempt on a deactivated exercise is not required and does not replace a pending active exercise" do
+    pending_link = create_quiz_link
+    hidden_link = create_ordering_link
+    Exercises::OrderingSubmission.call(activity_exercise: hidden_link, student: @student, ordered_ids: [ "item-1", "item-2" ])
+    hidden_link.exercise.update!(active: false)
+
+    assert_not ActivityResults.lesson_completed?(activity: @activity, student: @student)
+    submit_quiz(pending_link)
+    assert ActivityResults.lesson_completed?(activity: @activity, student: @student)
+  end
+
+  test "lesson without active exercises is not complete" do
+    assert_not ActivityResults.lesson_completed?(activity: @activity, student: @student)
+
+    hidden_link = create_quiz_link
+    submit_quiz(hidden_link)
+    assert ActivityResults.lesson_completed?(activity: @activity, student: @student)
+    hidden_link.exercise.update!(active: false)
+    assert_not ActivityResults.lesson_completed?(activity: @activity, student: @student)
+
+    inactive_only = create_ordering_link
+    inactive_only.update!(active: false)
+    assert_not ActivityResults.lesson_completed?(activity: @activity, student: @student)
+  end
+
+  test "deactivating and reactivating an exercise changes completion without touching attempts" do
+    answered = create_quiz_link
+    pending = create_ordering_link
+    attempt = submit_quiz(answered)
+
+    assert_not ActivityResults.lesson_completed?(activity: @activity, student: @student)
+    pending.exercise.update!(active: false)
+    assert ActivityResults.lesson_completed?(activity: @activity, student: @student)
+    pending.exercise.update!(active: true)
+    assert_not ActivityResults.lesson_completed?(activity: @activity, student: @student)
+
+    assert_equal 1, ExerciseAttempt.count
+    assert_equal attempt, ActivityResults.official_attempt(activity_exercise: answered, student: @student)
+    assert_equal 5, attempt.reload.score
+  end
+
+  test "completion keeps using the first official attempt" do
+    link = create_quiz_link
+    first = submit_quiz(link)
+    Exercises::QuizSubmission.call(activity_exercise: link, student: @student, answers: { "0" => "a", "1" => "42" })
+
+    assert_equal first, ActivityResults.official_attempt(activity_exercise: link, student: @student)
+    assert ActivityResults.lesson_completed?(activity: @activity, student: @student)
+  end
+
+  test "completion still requires active published lesson, class, student and enrollment" do
+    link = create_quiz_link
+    submit_quiz(link)
+    assert ActivityResults.lesson_completed?(activity: @activity, student: @student)
+
+    @activity.update!(published: false)
+    assert_not ActivityResults.lesson_completed?(activity: @activity, student: @student)
+    @activity.update!(published: true, active: false)
+    assert_not ActivityResults.lesson_completed?(activity: @activity, student: @student)
+    @activity.update!(active: true)
+    @school_class.update!(active: false)
+    assert_not ActivityResults.lesson_completed?(activity: @activity.reload, student: @student)
+    @school_class.update!(active: true)
+    @student.update!(active: false)
+    assert_not ActivityResults.lesson_completed?(activity: @activity.reload, student: @student.reload)
+    @student.update!(active: true)
+    @school_class.class_students.find_by!(student: @student).update!(active: false)
+    assert_not ActivityResults.lesson_completed?(activity: @activity.reload, student: @student.reload)
+  end
+
   private
+
+  def submit_quiz(link)
+    Exercises::QuizSubmission.call(activity_exercise: link, student: @student, answers: { "0" => "a", "1" => "wrong" }).attempt
+  end
 
   def create_student(username)
     Student.create!(name: username, username:, email: "#{username}@example.com", password: "secret123")

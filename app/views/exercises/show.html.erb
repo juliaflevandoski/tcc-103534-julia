@@ -1,23 +1,46 @@
 <main>
-	<% if @exercise.quiz? && current_student %>
-		<%= render "quiz_player", exercise: @exercise, activity_exercise: @activity_exercise %>
+	<% if @previous_official_attempt %>
+		<p class="notice previous-attempt-notice">Você já respondeu este exercício. Sua primeira tentativa válida é considerada para a nota oficial.
+			<%= link_to "Ver resultado anterior", exercise_attempt_path(@previous_official_attempt) %></p>
+	<% end %>	<% if @exercise.quiz? && current_student %>
+		<%= render "quiz_player", exercise: @exercise, activity_exercise: @activity_exercise, answers: @prefilled_answers %>
 	<% elsif @exercise.fill_blanks? && current_student %>
-		<%= render "fill_blanks_player", exercise: @exercise, activity_exercise: @activity_exercise %>
+		<%= render "fill_blanks_player", exercise: @exercise, activity_exercise: @activity_exercise, answers: @prefilled_answers %>
 	<% elsif @exercise.ordering? && current_student %>
-		<%= render "ordering_player", exercise: @exercise, activity_exercise: @activity_exercise, instructions: @ordering_instructions, items: @ordering_items %>
+		<% if @exercise.object.deep_stringify_keys["format"] == "multiple_sentences" %>
+			<%= render "ordering_multiple_player", exercise: @exercise, activity_exercise: @activity_exercise, instructions: @ordering_instructions, sentences: @ordering_sentences %>
+		<% else %>
+			<%= render "ordering_player", exercise: @exercise, activity_exercise: @activity_exercise, instructions: @ordering_instructions, items: @ordering_items %>
+		<% end %>
+	<% elsif current_teacher && @exercise.quiz? %>
+		<%= render "quiz_teacher_preview", exercise: @exercise %>
+	<% elsif current_teacher && @exercise.fill_blanks? %>
+		<%= render "fill_blanks_teacher_preview", exercise: @exercise %>
+	<% elsif current_teacher && @exercise.ordering? %>
+		<%= render "ordering_teacher_preview", exercise: @exercise %>
 	<% elsif @exercise.crossword? && current_student %>
-		<%= render "crossword_player", exercise: @exercise, activity_exercise: @activity_exercise, crossword: @crossword_payload %>
+		<%= render "crossword_player", exercise: @exercise, activity_exercise: @activity_exercise, crossword: @crossword_payload, cells: @prefilled_cells %>
 	<% elsif @exercise.crossword? %>
 		<%= render "crossword_preview", exercise: @exercise, crossword: @exercise.object %>
 	<% elsif @exercise.memory_game? && current_student %>
-		<%= render "memory_game_player", exercise: @exercise, activity_exercise: @activity_exercise, attempt: @memory_game_attempt, game: @memory_game_payload %>
+		<%= render "memory_game_player", exercise: @exercise, activity_exercise: @activity_exercise, attempt: @memory_game_attempt, game: @memory_game_payload, next_activity_exercise: @next_activity_exercise %>
 	<% elsif @exercise.memory_game? %>
 		<%= render "memory_game_preview", exercise: @exercise, cards: @memory_game_preview_deck %>
 	<% else %>
 		<h1><%= @exercise.title %></h1>
 		<p>Tipo: <%= @exercise.exercise_type %></p>
 		<% if current_teacher %><p>Professor: <%= @exercise.teacher.name %></p><% end %>
-		<pre><%= JSON.pretty_generate(@exercise.object) %></pre>
+		<p>Visualização não disponível para este exercício.</p>
 	<% end %>
-	<% if current_teacher %><%= link_to "Editar", edit_exercise_path(@exercise), class: "button" %><% end %>
+	<% if current_teacher %><%= link_to "Editar", (@source_activity ? edit_exercise_path(@exercise, activity_id: @source_activity.id) : edit_exercise_path(@exercise)), class: "button" %><% end %>
+	<% if current_teacher && @source_activity %>
+		<p>
+			<% if @already_in_source_activity %>
+				<%= link_to "Voltar à aula", activity_path(@source_activity), class: "button" %>
+			<% else %>
+				<%= link_to "Voltar à aula e adicionar este exercício", activity_path(@source_activity, exercise_id: @exercise.id), class: "button" %>
+			<% end %>
+			<%= link_to "Criar outro exercício", new_exercise_path(activity_id: @source_activity.id), class: "button" %>
+		</p>
+	<% end %>
 </main>

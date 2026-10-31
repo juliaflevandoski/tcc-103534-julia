@@ -27,7 +27,7 @@ class ActivityExercisePolicy < ApplicationPolicy
   end
 
   def student_can_access?
-    record.active? && record.activity.active? && record.activity.published? && record.activity.school_class.active? &&
+    record.active? && record.exercise.active? && record.activity.active? && record.activity.published? && record.activity.school_class.active? &&
       record.activity.school_class.class_students.active.exists?(student_id: user.id)
   end
 end

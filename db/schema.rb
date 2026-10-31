@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_29_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_31_000100) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.integer "blob_id", null: false
     t.datetime "created_at", null: false
@@ -62,6 +62,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_000000) do
     t.index ["activity_id", "position"], name: "index_activities_exercises_on_activity_id_and_position", unique: true, where: "active = 1"
     t.index ["activity_id"], name: "index_activities_exercises_on_activity_id"
     t.index ["exercise_id"], name: "index_activities_exercises_on_exercise_id"
+  end
+
+  create_table "class_post_comments", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.integer "author_id", null: false
+    t.string "author_type", null: false
+    t.text "body", null: false
+    t.integer "class_post_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["author_type", "author_id"], name: "index_class_post_comments_on_author"
+    t.index ["class_post_id", "created_at"], name: "index_class_post_comments_on_post_and_created_at"
+    t.index ["class_post_id"], name: "index_class_post_comments_on_class_post_id"
+  end
+
+  create_table "class_posts", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.text "body", null: false
+    t.integer "class_id", null: false
+    t.datetime "created_at", null: false
+    t.integer "teacher_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["class_id", "created_at"], name: "index_class_posts_on_class_id_and_created_at"
+    t.index ["teacher_id"], name: "index_class_posts_on_teacher_id"
   end
 
   create_table "classes", force: :cascade do |t|
@@ -161,6 +185,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_000000) do
   add_foreign_key "activities", "teachers"
   add_foreign_key "activities_exercises", "activities"
   add_foreign_key "activities_exercises", "exercises"
+  add_foreign_key "class_post_comments", "class_posts"
+  add_foreign_key "class_posts", "classes"
+  add_foreign_key "class_posts", "teachers"
   add_foreign_key "classes", "teachers"
   add_foreign_key "classes_students", "classes"
   add_foreign_key "classes_students", "students"

@@ -1,16 +1,29 @@
 module Exercises
   class FillBlanksGenerator < AiGeneratorBase
     SCHEMA_NAME = "ludus_fill_blanks_draft"
+    DIFFICULTY_DESCRIPTIONS = {
+      "easy" => "Fácil: texto direto e curto, contexto explícito e respostas facilmente identificáveis pelas informações próximas.",
+      "medium" => "Médio: exigir compreensão do contexto e relações entre informações do texto, mantendo pistas suficientes.",
+      "hard" => "Difícil: exigir interpretação mais aprofundada e compreensão de estruturas ou conceitos mais complexos, mantendo uma resposta esperada clara para cada lacuna."
+    }.freeze
 
-    def call(topic: nil, difficulty: nil, blank_count: nil)
+    def call(topic: nil, difficulty: nil, blank_count: nil, refinement: nil, previous_draft: nil)
+      error = refinement_error(refinement:, previous_draft:)
+      return failure(:invalid_input, error) if error
+
       count = parse_count(blank_count, minimum: 1)
       return failure(:invalid_input, "Informe tema, dificuldade e uma quantidade de lacunas entre 1 e 20.") unless valid_topic_and_difficulty?(topic, difficulty) && count
+
+      reference = previous_reference_for("fill_blanks", previous_draft)
+      return reference if reference.is_a?(Result)
 
       data = request_json(
         instructions: instructions_for(difficulty, count),
         input: input_for(topic, difficulty, count),
         schema_name: SCHEMA_NAME,
-        schema: schema_for(count)
+        schema: schema_for(count),
+        refinement:,
+        previous_reference: reference
       )
       return data if data.is_a?(Result)
       return invalid_response unless data.keys.sort == %w[blank_answers text_template]
@@ -36,8 +49,8 @@ module Exercises
     def instructions_for(difficulty, count)
       <<~INSTRUCTIONS.strip
         Gere um exercício educacional de completar lacunas para revisão do professor. Crie um texto claro, coerente e adequado ao tema, sem ambiguidades desnecessárias. A dificuldade é uma orientação pedagógica, não uma garantia de complexidade perfeita.
-        #{difficulty_instructions(difficulty)}
-        Gere exatamente #{count} lacunas. No texto, use cada marcador uma única vez, em sequência: {{1}}, {{2}} até {{#{count}}}. Retorne as respostas esperadas em blank_answers na mesma ordem dos marcadores. As respostas devem completar o texto corretamente e cada resposta deve ser não vazia.
+        #{difficulty_instructions(difficulty, descriptions: DIFFICULTY_DESCRIPTIONS)}
+        Gere exatamente #{count} lacunas, sem aumentar a quantidade solicitada. No texto, use cada marcador uma única vez, em sequência: {{1}}, {{2}} até {{#{count}}}. Retorne as respostas esperadas em blank_answers na mesma ordem dos marcadores. As respostas devem completar o texto corretamente, ser não vazias e evitar respostas igualmente válidas.
         Não acrescente explicações, comentários, dados pessoais de alunos ou texto fora do JSON. Este é apenas um candidato para revisão; não salve nem publique o exercício.
       INSTRUCTIONS
     end

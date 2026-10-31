@@ -10,14 +10,21 @@ module ActivityExercises
     end
 
     def call
-      records = @activity.activity_exercises.active.where(id: @ordered_ids).index_by(&:id)
-      return false unless records.keys.sort == @ordered_ids.sort
+      active_links = @activity.activity_exercises.active.to_a
+      records = active_links.index_by(&:id).slice(*@ordered_ids)
+      return false unless records.keys.sort == @ordered_ids.sort && @ordered_ids.uniq.size == @ordered_ids.size
+
+      # Vínculos fora da lista (ex.: de exercícios inativos) vão para o fim, preservando a ordem relativa.
+      remaining = active_links.reject { |link| records.key?(link.id) }.sort_by { |link| [ link.position, link.id ] }
+      final_order = @ordered_ids.map { |id| records[id] } + remaining
 
       ActivityExercise.transaction do
-        records.each_key { |id| records[id].update_columns(position: -id) }
-        @ordered_ids.each_with_index { |id, index| records[id].update!(position: index + 1) }
+        final_order.each { |link| link.update_columns(position: -link.id) }
+        final_order.each_with_index { |link, index| link.update!(position: index + 1) }
       end
       true
+    rescue ActiveRecord::RecordInvalid
+      false
     end
   end
 end

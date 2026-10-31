@@ -2,12 +2,12 @@ require "test_helper"
 
 class AuthorizationSecurityTest < ActionDispatch::IntegrationTest
   setup do
-    @teacher = Teacher.create!(name: "Teacher", username: "securityteacher", email: "securityteacher@example.com", password: "secret123")
-    @other_teacher = Teacher.create!(name: "Other teacher", username: "othersecurityteacher", email: "othersecurityteacher@example.com", password: "secret123")
+    @teacher = Teacher.create!(name: "Teacher", username: "securityteacher-#{SecureRandom.hex(6)}", email: "securityteacher-#{SecureRandom.hex(6)}@example.com", password: "secret123")
+    @other_teacher = Teacher.create!(name: "Other teacher", username: "othersecurityteacher-#{SecureRandom.hex(6)}", email: "othersecurityteacher-#{SecureRandom.hex(6)}@example.com", password: "secret123")
     @school_class = @teacher.school_classes.create!(name: "Owned class", active: true)
     @other_class = @other_teacher.school_classes.create!(name: "Other class", active: true)
-    @student = Student.create!(name: "Student", username: "securitystudent", email: "securitystudent@example.com", password: "secret123")
-    @other_student = Student.create!(name: "Other student", username: "othersecuritystudent", email: "othersecuritystudent@example.com", password: "secret123")
+    @student = Student.create!(name: "Student", username: "securitystudent-#{SecureRandom.hex(6)}", email: "securitystudent-#{SecureRandom.hex(6)}@example.com", password: "secret123")
+    @other_student = Student.create!(name: "Other student", username: "othersecuritystudent-#{SecureRandom.hex(6)}", email: "othersecuritystudent-#{SecureRandom.hex(6)}@example.com", password: "secret123")
     @membership = @school_class.class_students.create!(student: @student, active: true)
     @other_membership = @other_class.class_students.create!(student: @other_student, active: true)
     @activity = @school_class.activities.create!(title: "Owned activity", published: true)

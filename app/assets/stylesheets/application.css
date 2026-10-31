@@ -17,6 +17,7 @@ body { margin: 0; }
 nav { display: flex; flex-wrap: wrap; gap: 1rem; }
 main { max-width: 72rem; margin: 2rem auto; padding: 0 1.25rem; }
 .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.memory-game:has(.memory-result:not([hidden])) .memory-game-back-link { display: none; }
 .button, button { display: inline-block; border: 0; border-radius: 4px; padding: .6rem .9rem; background: #2563eb; color: #fff; text-decoration: none; cursor: pointer; }
 .button.danger { background: #b91c1c; }
 table { width: 100%; border-collapse: collapse; background: #fff; }
@@ -48,6 +49,7 @@ dialog.quiz-ai-modal .quiz-ai-types input[type="checkbox"] { flex: 0 0 auto; }
 .quiz-answer-option { display: flex; align-items: center; gap: .65rem; margin: .4rem 0; }
 .quiz-answer-option input[type="radio"] { flex: 0 0 auto; width: auto; margin: 0; }
 .quiz-answer-option label { display: inline; margin: 0; font-weight: 400; cursor: pointer; }
+.quiz-correct-badge { display: inline-flex; align-items: center; max-width: 100%; margin-left: .5rem; padding: .1rem .4rem; border-radius: 3px; background: #dcfce7; color: #166534; font-size: .85em; font-weight: 600; vertical-align: middle; white-space: normal; }
 .fill-blanks-text { line-height: 2.8; }
 .fill-blank-input { display: inline-block; width: min(14rem, 100%); margin: 0 .2rem; vertical-align: baseline; }
 .fill-blanks-feedback { display: grid; gap: .5rem; padding-left: 1.5rem; }
@@ -85,6 +87,7 @@ table.crossword-grid { width: auto; border-collapse: separate; border-spacing: 2
 .memory-pair > legend { padding: 0 .35rem; font-weight: 700; }
 .memory-pair > button { grid-column: 1 / -1; justify-self: start; margin-bottom: .75rem; }
 .memory-pair img { display: block; width: 5rem; height: 5rem; margin-top: .5rem; object-fit: cover; border-radius: 3px; }
+.memory-pair [hidden] { display: none; }
 [data-memory-image-hint]:not([hidden]) { display: block; margin: .25rem 0; color: #475569; font-size: .9rem; font-weight: 400; }
 .memory-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); gap: .75rem; margin: 1rem 0; }
 .memory-card { display: grid; place-items: center; box-sizing: border-box; width: 100%; min-width: 0; aspect-ratio: 1 / 1; padding: .65rem; overflow: hidden; border: 2px solid #3f5b52; border-radius: 5px; background: #24483f; color: #fff; font-size: 1.15rem; font-weight: 700; text-align: center; overflow-wrap: anywhere; transition: background-color .18s, transform .18s; }

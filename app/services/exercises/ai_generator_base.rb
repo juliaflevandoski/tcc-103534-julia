@@ -1,7 +1,8 @@
 module Exercises
   class AiGeneratorBase
+    include RefinementSupport
+
     DIFFICULTIES = QuizGenerator::DIFFICULTIES
-    DIFFICULTY_DESCRIPTIONS = QuizGenerator::DIFFICULTY_DESCRIPTIONS
     MAX_GENERATED_ITEMS = 20
 
     Result = Struct.new(:draft, :error_code, :message, keyword_init: true) do
@@ -37,7 +38,10 @@ module Exercises
       topic.is_a?(String) && topic.present? && DIFFICULTIES.include?(difficulty)
     end
 
-    def request_json(instructions:, input:, schema_name:, schema:)
+
+
+    def request_json(instructions:, input:, schema_name:, schema:, refinement: nil, previous_reference: nil)
+      instructions, input = apply_refinement(instructions:, input:, refinement:, previous_reference:)
       response = begin
         @client.call(instructions:, input:, schema_name:, schema:)
       rescue StandardError => error
@@ -65,11 +69,11 @@ module Exercises
       Result.new(draft: nil, error_code:, message:)
     end
 
-    def difficulty_instructions(difficulty)
+    def difficulty_instructions(difficulty, descriptions:)
       <<~TEXT
-        Níveis de dificuldade:
-        #{DIFFICULTY_DESCRIPTIONS.map { |level, description| "#{level}: #{description}" }.join("\n")}
-        Aplique o nível selecionado: #{difficulty}. É uma orientação pedagógica, não uma garantia de dificuldade perfeita.
+        Critérios de dificuldade para este tipo de exercício:
+        #{descriptions.map { |level, description| "#{level}: #{description}" }.join("\n")}
+        Aplique o nível selecionado: #{difficulty}. A dificuldade é uma orientação pedagógica; preserve clareza, validade e resposta correta inequívoca.
       TEXT
     end
   end

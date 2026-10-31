@@ -1,5 +1,7 @@
+<% prefilled_cells = local_assigns[:cells] || {} %>
 <h1><%= exercise.title %></h1>
 <p><%= crossword.fetch(:instructions) %></p>
+<p><%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if activity_exercise&.persisted? %></p>
 <%= form_with url: exercise_attempts_path, scope: :exercise_attempt, data: { controller: "crossword-player", action: "input->crossword-player#updatePendingStatus submit->crossword-player#serializeAnswer" } do %>
   <%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
   <%= hidden_field_tag "exercise_attempt[answer]", "{}", data: { crossword_player_target: "answer" } %>
@@ -14,8 +16,7 @@
                 <% if starting_numbers.any? %><span class="crossword-cell-number"><%= starting_numbers.min %></span><% end %>
                 <input type="text" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false"
                   aria-label="Linha <%= row_index + 1 %>, coluna <%= column_index + 1 %>"
-                  required
-                  data-crossword-player-target="cell" data-row="<%= row_index %>" data-column="<%= column_index %>"
+                  required value="<%= prefilled_cells["#{row_index}-#{column_index}"] %>"                  data-crossword-player-target="cell" data-row="<%= row_index %>" data-column="<%= column_index %>"
                   data-action="input->crossword-player#inputLetter keydown->crossword-player#navigateCells">
               </td>
             <% else %>
@@ -42,5 +43,5 @@
   <% end %>
 
   <p data-crossword-player-target="status" role="status" aria-live="polite"></p>
-  <div class="actions"><%= submit_tag "Conferir cruzadinha", class: "button" %></div>
+  <div class="actions"><%= submit_tag "Conferir cruzadinha", class: "button", data: { turbo_submits_with: "Enviando..." } %></div>
 <% end %>

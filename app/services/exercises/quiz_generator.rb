@@ -1,10 +1,12 @@
 module Exercises
   class QuizGenerator
+    include RefinementSupport
+
     DIFFICULTIES = %w[easy medium hard].freeze
     DIFFICULTY_DESCRIPTIONS = {
-      "easy" => "Fácil: conceitos fundamentais, reconhecimento e recordação direta, com poucos passos de raciocínio.",
-      "medium" => "Médio: compreensão e aplicação de conceitos, podendo relacionar ideias em situações familiares.",
-      "hard" => "Difícil: análise, síntese ou transferência de conceitos, com raciocínio mais elaborado e múltiplas etapas quando pertinente."
+      "easy" => "Fácil: reconhecimento e compreensão de conceitos fundamentais, enunciados diretos e poucos passos de raciocínio.",
+      "medium" => "Médio: aplicação e interpretação de conceitos em situações familiares, relacionando informações relevantes.",
+      "hard" => "Difícil: análise e comparação de conceitos, aplicação em contextos novos e raciocínio mais elaborado, sem depender de ambiguidades."
     }.freeze
     MIN_QUESTIONS = 1
     MAX_QUESTIONS = 20
@@ -28,13 +30,25 @@ module Exercises
       @client = client
     end
 
-    def call(topic: nil, difficulty: nil, question_count: nil, question_types: nil)
+    def call(topic: nil, difficulty: nil, question_count: nil, question_types: nil, refinement: nil, previous_draft: nil)
+      error = refinement_error(refinement:, previous_draft:)
+      return failure(:invalid_input, error) if error
+
       request = normalize_request(topic:, difficulty:, question_count:, question_types:)
       return failure(:invalid_input, "Informe tema, dificuldade, quantidade e tipos de questão válidos.") unless request
 
-      response = @client.call(
+      reference = previous_reference_for("quiz", previous_draft, { question_types: request.fetch(:question_types) })
+      return reference if reference.is_a?(Result)
+
+      instructions, input = apply_refinement(
         instructions: instructions_for(request.fetch(:difficulty)),
         input: input_for(request),
+        refinement:,
+        previous_reference: reference
+      )
+      response = @client.call(
+        instructions:,
+        input:,
         schema_name: SCHEMA_NAME,
         schema: schema_for(request.fetch(:question_types), request.fetch(:question_count))
       )

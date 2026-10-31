@@ -3,10 +3,17 @@
 	<p><%= @school_class.description %></p>
 	<p>Professor: <%= @school_class.teacher.name %></p>
 	<% if current_teacher %><p>Código de acesso: <strong><%= @school_class.access_code %></strong></p><%= link_to "Editar", edit_school_class_path(@school_class), class: "button" %><% end %>
+	<% if current_teacher %>
+		<%= link_to "Nova aula", new_activity_path(class_id: @school_class.id), class: "button" %>
+		<%= link_to "Gerenciar alunos", class_students_path, class: "button" %>
+	<% end %>
+	<p><%= link_to "Mural", school_class_class_posts_path(@school_class), class: "button" %></p>
 	<h2>Aulas</h2>
 	<% @activities.each do |activity| %>
 		<h3><%= link_to activity.title, activity_path(activity) %></h3>
-		<%= render "activities/exercise_assignments", activity: activity, activity_exercises: activity.activity_exercises.active.ordered, available_exercises: @available_exercises, activity_exercise: activity.activity_exercises.build(position: activity.activity_exercises.active.maximum(:position).to_i + 1, points: 0) %>
+		<% count = @exercise_counts.fetch(activity.id, 0) %>
+		<p><%= pluralize(count, "exercício") %></p>
+		<% if current_teacher %><p><%= activity.published? ? "Publicada" : "Rascunho" %></p><% end %>
 	<% end %>
 	<% if current_teacher %>
 		<h2>Alunos matriculados</h2>

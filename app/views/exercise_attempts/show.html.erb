@@ -84,21 +84,38 @@
 		<p class="attempt-result-note">XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
 		<%= link_to "Tentar novamente", exercise_path(exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
 	<% elsif exercise.ordering? && current_student %>
-		<% positions = @exercise_attempt.correct.fetch("positions", []) %>
-		<% ordered_ids = answer.fetch("ordered_ids", []) %>
-		<% item_labels = exercise.object.fetch("items", []).to_h { |item| [item.fetch("id").to_s, item.fetch("label").to_s] } %>
-		<ol class="ordering-feedback-list attempt-question-list">
-			<% positions.each_with_index do |position, index| %>
-				<% is_correct = position.fetch("correct") %>
-				<% submitted_id = ordered_ids[index].to_s %>
-				<li class="attempt-question-card <%= is_correct ? "is-correct" : "is-incorrect" %>">
-					<div class="attempt-question-heading"><span class="attempt-question-prompt">Posição <%= index + 1 %></span><span class="result-status result-status--<%= is_correct ? "correct" : "incorrect" %>"><%= is_correct ? "Correta" : "Incorreta" %></span></div>
-					<p>Item enviado: <%= item_labels[submitted_id].presence || "Não disponível" %></p>
-					<p>Item esperado: <%= position.fetch("expected_label", "Não disponível") %></p>
-				</li>
+		<% if exercise.object.deep_stringify_keys["format"] == Exercises::ExerciseContentValidator::MULTIPLE_SENTENCES_FORMAT %>
+			<% sentence_feedback = @exercise_attempt.correct.fetch("sentences", []) %>
+			<% sentence_feedback.each_with_index do |sentence, sentence_index| %>
+				<h2>Frase <%= sentence_index + 1 %></h2>
+				<ol class="ordering-feedback-list attempt-question-list">
+					<% sentence.fetch("positions").each_with_index do |position, index| %>
+						<% is_correct = position.fetch("correct") %>
+						<li class="attempt-question-card <%= is_correct ? "is-correct" : "is-incorrect" %>">
+							<div class="attempt-question-heading"><span class="attempt-question-prompt">Posição <%= index + 1 %></span><span class="result-status result-status--<%= is_correct ? "correct" : "incorrect" %>"><%= is_correct ? "Correta" : "Incorreta" %></span></div>
+							<p>Palavra enviada: <%= position.fetch("submitted_label", "Não disponível") %></p>
+							<p>Palavra esperada: <%= position.fetch("expected_label", "Não disponível") %></p>
+						</li>
+					<% end %>
+				</ol>
 			<% end %>
-		</ol>
-		<p class="attempt-result-note">Sequência correta:</p>
+		<% else %>
+			<% positions = @exercise_attempt.correct.fetch("positions", []) %>
+			<% ordered_ids = answer.fetch("ordered_ids", []) %>
+			<% item_labels = exercise.object.fetch("items", []).to_h { |item| [item.fetch("id").to_s, item.fetch("label").to_s] } %>
+			<ol class="ordering-feedback-list attempt-question-list">
+				<% positions.each_with_index do |position, index| %>
+					<% is_correct = position.fetch("correct") %>
+					<% submitted_id = ordered_ids[index].to_s %>
+					<li class="attempt-question-card <%= is_correct ? "is-correct" : "is-incorrect" %>">
+						<div class="attempt-question-heading"><span class="attempt-question-prompt">Posição <%= index + 1 %></span><span class="result-status result-status--<%= is_correct ? "correct" : "incorrect" %>"><%= is_correct ? "Correta" : "Incorreta" %></span></div>
+						<p>Item enviado: <%= item_labels[submitted_id].presence || "Não disponível" %></p>
+						<p>Item esperado: <%= position.fetch("expected_label", "Não disponível") %></p>
+					</li>
+				<% end %>
+			</ol>
+			<p class="attempt-result-note">Sequência correta:</p>
+		<% end %>
 		<p class="attempt-result-note">XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
 		<%= link_to "Tentar novamente", exercise_path(exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
 	<% elsif exercise.crossword? && current_student %>
@@ -135,5 +152,6 @@
 	<div class="attempt-result-navigation">
 		<%= link_to "Resultados", exercise_attempts_path(school_class_id: @exercise_attempt.activity_exercise.activity.class_id), class: "button" %>
 		<%= link_to "Voltar à aula", activity_path(@exercise_attempt.activity_exercise.activity), class: "button" if @return_to_activity %>
+		<%= link_to "Próximo exercício", exercise_path(@next_activity_exercise.exercise, activity_exercise_id: @next_activity_exercise.id), class: "button" if @next_activity_exercise %>
 	</div>
 </main>

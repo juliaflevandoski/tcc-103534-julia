@@ -4,8 +4,10 @@ export default class extends Controller {
   static values = { crosswordPreviewUrl: String, quizGenerateUrl: String, fillBlanksGenerateUrl: String, orderingGenerateUrl: String, crosswordGenerateUrl: String, memoryGameGenerateUrl: String, memoryGameImageUrls: Object }
 
   static targets = [
-    "typeSelect", "objectInput", "quizFields", "quizAiModal", "quizAiTopic", "quizAiDifficulty",
+    "typeSelect", "objectInput", "quizFields", "quizAiModal", "quizAiTopic", "quizAiDifficulty", "quizAiRefinement",
+    "fillBlanksAiRefinement", "orderingAiRefinement", "crosswordAiRefinement", "memoryAiRefinement",
     "quizAiQuestionCount", "quizAiQuestionType", "quizAiTypeError", "quizAiGenerateButton",
+    "quizAiRefineButton", "fillBlanksAiRefineButton", "orderingAiRefineButton", "crosswordAiRefineButton", "memoryAiRefineButton",
     "quizAiStatus", "quizAiPreview", "quizAiPreviewQuestions", "quizAiApplyButton",
     "rawFields", "rawObject", "questionsList",
     "questionTemplate", "error", "fillBlanksFields", "fillTextTemplate", "blanksList",
@@ -13,9 +15,11 @@ export default class extends Controller {
     "fillBlanksAiCount", "fillBlanksAiGenerateButton", "fillBlanksAiStatus", "fillBlanksAiPreview",
     "fillBlanksAiText", "fillBlanksAiAnswers", "fillBlanksAiApplyButton", "orderingFields",
     "orderingAiModal", "orderingAiTopic", "orderingAiDifficulty", "orderingAiItemType", "orderingAiItemCount",
-    "orderingAiGenerateButton", "orderingAiStatus", "orderingAiPreview", "orderingAiInstructions",
-    "orderingAiItems", "orderingAiApplyButton", "orderingInstructions", "orderingItemType",
-    "orderingItemsList", "orderingItemTemplate", "orderingError", "crosswordFields", "crosswordAiModal",
+    "orderingAiSentenceCount", "orderingAiSingleFields", "orderingAiMultipleFields", "orderingAiGenerateButton",
+    "orderingAiStatus", "orderingAiPreview", "orderingAiPreviewHeading", "orderingAiInstructions",
+    "orderingAiItems", "orderingAiApplyButton", "orderingAiOpenWrapper", "orderingInstructions", "orderingFormat",
+    "orderingSingleFields", "orderingMultipleFields", "orderingItemType", "orderingItemsList", "orderingItemTemplate",
+    "orderingSentencesList", "orderingSentenceTemplate", "orderingError", "crosswordFields", "crosswordAiModal",
     "crosswordAiTopic", "crosswordAiDifficulty", "crosswordAiWordCount", "crosswordAiGenerateButton",
     "crosswordAiStatus", "crosswordAiPreview", "crosswordAiWords", "crosswordAiApplyButton",
     "title", "crosswordInstructions", "crosswordWordsList", "crosswordWordTemplate", "crosswordSeed",
@@ -39,6 +43,7 @@ export default class extends Controller {
     this.crosswordAiRequestPending = false
     this.generatedMemoryGame = null
     this.memoryGameAiRequestPending = false
+    this.aiGenerationVersions = Object.create(null)
     this.rawObjectTarget.value = JSON.stringify(this.object, null, 2)
     this.questionsForEditing().forEach((question) => this.addQuestion(null, question))
     if (!this.questionsListTarget.children.length) this.addQuestion()
@@ -46,13 +51,25 @@ export default class extends Controller {
     this.savedBlanks = this.object.blanks || {}
     this.refreshBlanks()
     this.orderingInstructionsTarget.value = this.object.instructions || ""
+    this.orderingFormatTarget.value = this.object.format === "multiple_sentences" ? "multiple_sentences" : "single_sequence"
+    this.orderingInstructionsByFormat = {
+      single_sequence: this.orderingInstructionsTarget.value,
+      multiple_sentences: this.orderingInstructionsTarget.value
+    }
+    this.currentOrderingFormat = this.orderingFormatTarget.value
     this.orderingItemTypeTarget.value = this.object.item_type || this.inferOrderingItemType()
     this.orderingItemsForEditing().forEach((item) => this.appendOrderingItem(item))
     if (!this.orderingItemsListTarget.children.length) {
       this.appendOrderingItem()
       this.appendOrderingItem()
     }
+    this.orderingSentencesForEditing().forEach((sentence) => this.appendOrderingSentence(sentence))
+    if (!this.orderingSentencesListTarget.children.length) {
+      this.appendOrderingSentence()
+      this.appendOrderingSentence()
+    }
     this.changeOrderingItemType()
+    this.changeOrderingFormat()
     this.crosswordPreviewValid = false
     this.crosswordInstructionsTarget.value = this.object.instructions || ""
     const crosswordWords = Array.isArray(this.object.words) ? this.object.words : []
@@ -84,15 +101,15 @@ export default class extends Controller {
     const isOrdering = this.typeSelectTarget.value === "ordering"
     const isCrossword = this.typeSelectTarget.value === "crossword"
     const isMemoryGame = this.typeSelectTarget.value === "memory_game"
-    this.titleTarget.required = isCrossword || isMemoryGame
+    this.titleTarget.required = true
     this.quizFieldsTarget.hidden = !isQuiz
     this.fillBlanksFieldsTarget.hidden = !isFillBlanks
     this.orderingFieldsTarget.hidden = !isOrdering
     this.crosswordFieldsTarget.hidden = !isCrossword
     this.memoryGameFieldsTarget.hidden = !isMemoryGame
     this.memoryGameFieldsTarget.disabled = !isMemoryGame
-    this.rawFieldsTarget.hidden = isQuiz || isFillBlanks || isOrdering || isCrossword || isMemoryGame
-    this.rawObjectTarget.disabled = isQuiz || isFillBlanks || isOrdering || isCrossword || isMemoryGame
+    this.rawFieldsTarget.hidden = true
+    this.rawObjectTarget.disabled = true
     this.errorTarget.hidden = true
     this.blankErrorTarget.hidden = true
     this.orderingErrorTarget.hidden = true
@@ -104,12 +121,104 @@ export default class extends Controller {
     if (!this.quizAiModalTarget.open) this.quizAiModalTarget.showModal()
   }
 
-  keepQuizAiModalOpen(event) {
+  closeAiModal(event) {
     event.preventDefault()
+    event.currentTarget.closest("dialog")?.close()
   }
 
-  keepAiModalOpen(event) {
-    event.preventDefault()
+  invalidateAiGeneration(event) {
+    const kind = event.currentTarget.dataset.aiGenerationKind
+    const controls = this.aiGenerationControls(kind)
+    if (!controls) return
+
+    this.aiGenerationVersions[kind] = (this.aiGenerationVersions[kind] || 0) + 1
+    this[controls.pendingProperty] = false
+    this[controls.draftProperty] = null
+    controls.generateButtonTarget.disabled = false
+    controls.generateButtonTarget.textContent = "Gerar sugestão"
+    this.setAiBusy(kind, false)
+    controls.applyButtonTarget.hidden = true
+    controls.previewTarget.hidden = true
+    controls.statusTarget.textContent = ""
+    controls.statusTarget.removeAttribute("data-state")
+  }
+
+  aiGenerationControls(kind) {
+    const controls = {
+      quiz: [ "quizAiModal", "quizAiRequestPending", "generatedQuiz", "quizAiGenerateButton", "quizAiApplyButton", "quizAiPreview", "quizAiStatus", "quizAiRefineButton", "quizAiRefinement" ],
+      fillBlanks: [ "fillBlanksAiModal", "fillBlanksAiRequestPending", "generatedFillBlanks", "fillBlanksAiGenerateButton", "fillBlanksAiApplyButton", "fillBlanksAiPreview", "fillBlanksAiStatus", "fillBlanksAiRefineButton", "fillBlanksAiRefinement" ],
+      ordering: [ "orderingAiModal", "orderingAiRequestPending", "generatedOrdering", "orderingAiGenerateButton", "orderingAiApplyButton", "orderingAiPreview", "orderingAiStatus", "orderingAiRefineButton", "orderingAiRefinement" ],
+      crossword: [ "crosswordAiModal", "crosswordAiRequestPending", "generatedCrossword", "crosswordAiGenerateButton", "crosswordAiApplyButton", "crosswordAiPreview", "crosswordAiStatus", "crosswordAiRefineButton", "crosswordAiRefinement" ],
+      memoryGame: [ "memoryGameAiModal", "memoryGameAiRequestPending", "generatedMemoryGame", "memoryAiGenerateButton", "memoryAiApplyButton", "memoryAiPreview", "memoryAiStatus", "memoryAiRefineButton", "memoryAiRefinement" ]
+    }[kind]
+    if (!controls) return null
+
+    const [ modal, pendingProperty, draftProperty, generateButton, applyButton, preview, status, refineButton, refinement ] = controls
+    return {
+      modalTarget: this[`${modal}Target`],
+      pendingProperty,
+      draftProperty,
+      generateButtonTarget: this[`${generateButton}Target`],
+      applyButtonTarget: this[`${applyButton}Target`],
+      previewTarget: this[`${preview}Target`],
+      statusTarget: this[`${status}Target`],
+      refineButtonTarget: this[`${refineButton}Target`],
+      refinementTarget: this[`${refinement}Target`]
+    }
+  }
+
+  // Alterna os botões durante um pedido; "Refinar sugestão" só aparece com uma sugestão em memória.
+  setAiBusy(kind, busy, refining = false) {
+    const controls = this.aiGenerationControls(kind)
+    controls.generateButtonTarget.disabled = busy
+    controls.generateButtonTarget.textContent = busy && !refining ? "Gerando..." : "Gerar sugestão"
+    controls.refineButtonTarget.disabled = busy
+    controls.refineButtonTarget.textContent = busy && refining ? "Refinando..." : "Refinar sugestão"
+    controls.refineButtonTarget.hidden = !this[controls.draftProperty]
+  }
+
+  refineAiSuggestion(event) {
+    const method = {
+      quiz: "generateQuiz", fillBlanks: "generateFillBlanks", ordering: "generateOrdering",
+      crossword: "generateCrossword", memoryGame: "generateMemoryGame"
+    }[event.params.kind]
+    if (method) return this[method](event, true)
+  }
+
+  // Valida a instrução de refinamento e devolve o rascunho anterior; null se o pedido não deve seguir.
+  prepareAiRefinement(kind, refining) {
+    const controls = this.aiGenerationControls(kind)
+    const refinement = controls.refinementTarget.value.trim()
+    if (!refining) return { refinement, previousDraft: null }
+
+    const draft = this[controls.draftProperty]
+    let message = null
+    if (!draft) message = "Gere uma sugestão antes de refiná-la."
+    else if (!refinement) message = "Informe o que deseja modificar na sugestão."
+    else if (refinement.length > 300) message = "As instruções adicionais devem ter no máximo 300 caracteres."
+    if (message) {
+      controls.statusTarget.dataset.state = "error"
+      controls.statusTarget.textContent = message
+      controls.refinementTarget.setAttribute("aria-invalid", "true")
+      controls.refinementTarget.focus()
+      return null
+    }
+
+    controls.refinementTarget.removeAttribute("aria-invalid")
+    // Na cruzadinha só palavras e pistas seguem para o servidor, sem a grade.
+    const previousDraft = kind === "crossword" ? { words: draft.words.map(({ word, clue }) => ({ word, clue })) } : draft
+    return { refinement, previousDraft }
+  }
+
+  beginAiGeneration(kind) {
+    const version = (this.aiGenerationVersions[kind] || 0) + 1
+    this.aiGenerationVersions[kind] = version
+    return version
+  }
+
+  aiGenerationIsCurrent(kind, version) {
+    const controls = this.aiGenerationControls(kind)
+    return controls && this.aiGenerationVersions[kind] === version && controls.modalTarget.open
   }
 
   showQuizAiValidation(message, target) {
@@ -119,7 +228,7 @@ export default class extends Controller {
     target.focus()
   }
 
-  async generateQuiz(event) {
+  async generateQuiz(event, refining = false) {
     event.preventDefault()
     if (this.quizAiRequestPending) return
 
@@ -147,13 +256,18 @@ export default class extends Controller {
     }
     ;[ this.quizAiTopicTarget, this.quizAiDifficultyTarget, questionCount ].forEach((target) => target.removeAttribute("aria-invalid"))
 
+    const refineRequest = this.prepareAiRefinement("quiz", refining)
+    if (!refineRequest) return
+
+    const requestVersion = this.beginAiGeneration("quiz")
     this.quizAiRequestPending = true
-    this.generatedQuiz = null
-    this.quizAiApplyButtonTarget.hidden = true
-    this.quizAiPreviewTarget.hidden = true
-    this.quizAiPreviewQuestionsTarget.replaceChildren()
-    this.quizAiGenerateButtonTarget.disabled = true
-    this.quizAiGenerateButtonTarget.textContent = "Gerando..."
+    if (!refining) {
+      this.generatedQuiz = null
+      this.quizAiApplyButtonTarget.hidden = true
+      this.quizAiPreviewTarget.hidden = true
+      this.quizAiPreviewQuestionsTarget.replaceChildren()
+    }
+    this.setAiBusy("quiz", true, refining)
     this.quizAiStatusTarget.dataset.state = "loading"
     this.quizAiStatusTarget.textContent = "A geração pode levar alguns instantes."
 
@@ -169,10 +283,13 @@ export default class extends Controller {
           topic,
           difficulty,
           question_count: count,
-          question_types: questionTypes
+          question_types: questionTypes,
+          refinement: refineRequest.refinement,
+          ...(refineRequest.previousDraft && { previous_draft: refineRequest.previousDraft })
         })
       })
       const payload = await response.json().catch(() => null)
+      if (!this.aiGenerationIsCurrent("quiz", requestVersion)) return
       if (!response.ok) throw new Error(payload?.errors?.[0]?.message || "Não foi possível gerar o quiz. Tente novamente.")
 
       const quiz = payload?.data?.quiz
@@ -184,14 +301,17 @@ export default class extends Controller {
       this.renderQuizPreview(quiz)
       this.quizAiApplyButtonTarget.hidden = false
       this.quizAiStatusTarget.dataset.state = "success"
-      this.quizAiStatusTarget.textContent = "Sugestão gerada. Revise as questões antes de aplicá-las ao editor."
+      this.quizAiStatusTarget.textContent = refining ? "Sugestão refinada. Revise as questões antes de aplicá-las ao editor." : "Sugestão gerada. Revise as questões antes de aplicá-las ao editor."
     } catch (error) {
-      this.quizAiStatusTarget.dataset.state = "error"
-      this.quizAiStatusTarget.textContent = error.message || "Não foi possível gerar o quiz. Tente novamente."
+      if (this.aiGenerationIsCurrent("quiz", requestVersion)) {
+        this.quizAiStatusTarget.dataset.state = "error"
+        this.quizAiStatusTarget.textContent = error.message || "Não foi possível gerar o quiz. Tente novamente."
+      }
     } finally {
-      this.quizAiRequestPending = false
-      this.quizAiGenerateButtonTarget.disabled = false
-      this.quizAiGenerateButtonTarget.textContent = "Gerar sugestão"
+      if (this.aiGenerationIsCurrent("quiz", requestVersion)) {
+        this.quizAiRequestPending = false
+        this.setAiBusy("quiz", false)
+      }
     }
   }
 
@@ -571,7 +691,7 @@ export default class extends Controller {
     if (!this.fillBlanksAiModalTarget.open) this.fillBlanksAiModalTarget.showModal()
   }
 
-  async generateFillBlanks(event) {
+  async generateFillBlanks(event, refining = false) {
     event.preventDefault()
     if (this.fillBlanksAiRequestPending) return
 
@@ -585,12 +705,17 @@ export default class extends Controller {
       return this.showAiValidation("Informe uma quantidade entre 1 e 20 lacunas.", countField, this.fillBlanksAiStatusTarget)
     }
 
+    const refineRequest = this.prepareAiRefinement("fillBlanks", refining)
+    if (!refineRequest) return
+
+    const requestVersion = this.beginAiGeneration("fillBlanks")
     this.fillBlanksAiRequestPending = true
-    this.generatedFillBlanks = null
-    this.fillBlanksAiApplyButtonTarget.hidden = true
-    this.fillBlanksAiPreviewTarget.hidden = true
-    this.fillBlanksAiGenerateButtonTarget.disabled = true
-    this.fillBlanksAiGenerateButtonTarget.textContent = "Gerando..."
+    if (!refining) {
+      this.generatedFillBlanks = null
+      this.fillBlanksAiApplyButtonTarget.hidden = true
+      this.fillBlanksAiPreviewTarget.hidden = true
+    }
+    this.setAiBusy("fillBlanks", true, refining)
     this.fillBlanksAiStatusTarget.dataset.state = "loading"
     this.fillBlanksAiStatusTarget.textContent = "A geração pode levar alguns instantes."
 
@@ -602,9 +727,13 @@ export default class extends Controller {
           "Accept": "application/json",
           "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || ""
         },
-        body: JSON.stringify({ topic, difficulty, blank_count: count })
+        body: JSON.stringify({
+          topic, difficulty, blank_count: count, refinement: refineRequest.refinement,
+          ...(refineRequest.previousDraft && { previous_draft: refineRequest.previousDraft })
+        })
       })
       const payload = await response.json().catch(() => null)
+      if (!this.aiGenerationIsCurrent("fillBlanks", requestVersion)) return
       if (!response.ok) throw new Error(payload?.errors?.[0]?.message || "Não foi possível gerar as lacunas. Tente novamente.")
 
       const draft = payload?.data?.draft
@@ -618,12 +747,15 @@ export default class extends Controller {
       this.fillBlanksAiStatusTarget.dataset.state = "success"
       this.fillBlanksAiStatusTarget.textContent = "Sugestão gerada. Revise as lacunas e respostas antes de aplicá-las."
     } catch (error) {
-      this.fillBlanksAiStatusTarget.dataset.state = "error"
-      this.fillBlanksAiStatusTarget.textContent = error.message || "Não foi possível gerar as lacunas. Tente novamente."
+      if (this.aiGenerationIsCurrent("fillBlanks", requestVersion)) {
+        this.fillBlanksAiStatusTarget.dataset.state = "error"
+        this.fillBlanksAiStatusTarget.textContent = error.message || "Não foi possível gerar as lacunas. Tente novamente."
+      }
     } finally {
-      this.fillBlanksAiRequestPending = false
-      this.fillBlanksAiGenerateButtonTarget.disabled = false
-      this.fillBlanksAiGenerateButtonTarget.textContent = "Gerar sugestão"
+      if (this.aiGenerationIsCurrent("fillBlanks", requestVersion)) {
+        this.fillBlanksAiRequestPending = false
+        this.setAiBusy("fillBlanks", false)
+      }
     }
   }
 
@@ -658,27 +790,44 @@ export default class extends Controller {
     if (!this.orderingAiModalTarget.open) this.orderingAiModalTarget.showModal()
   }
 
-  async generateOrdering(event) {
+  async generateOrdering(event, refining = false) {
     event.preventDefault()
     if (this.orderingAiRequestPending) return
 
+    const format = this.orderingFormatTarget.value
+    const isMultipleSentences = format === "multiple_sentences"
     const topic = this.orderingAiTopicTarget.value.trim()
     const difficulty = this.orderingAiDifficultyTarget.value
-    const itemType = this.orderingAiItemTypeTarget.value
-    const countField = this.orderingAiItemCountTarget
-    const itemCount = Number(countField.value)
+    const countField = isMultipleSentences ? this.orderingAiSentenceCountTarget : this.orderingAiItemCountTarget
+    const count = Number(countField.value)
     if (!topic) return this.showAiValidation("Informe o tema do exercício.", this.orderingAiTopicTarget, this.orderingAiStatusTarget)
     if (!difficulty) return this.showAiValidation("Selecione a dificuldade.", this.orderingAiDifficultyTarget, this.orderingAiStatusTarget)
-    if (!countField.value || !Number.isInteger(itemCount) || itemCount < 2 || itemCount > 20) {
-      return this.showAiValidation("Informe uma quantidade entre 2 e 20 itens.", countField, this.orderingAiStatusTarget)
+    if (!countField.value || !Number.isInteger(count) || count < 2 || count > 20) {
+      const quantityLabel = isMultipleSentences ? "frases" : "itens"
+      return this.showAiValidation(`Informe uma quantidade entre 2 e 20 ${quantityLabel}.`, countField, this.orderingAiStatusTarget)
     }
 
+    const refineRequest = this.prepareAiRefinement("ordering", refining)
+    if (!refineRequest) return
+
+    const requestBody = { topic, difficulty, refinement: refineRequest.refinement }
+    if (refineRequest.previousDraft) requestBody.previous_draft = refineRequest.previousDraft
+    if (isMultipleSentences) {
+      requestBody.format = "multiple_sentences"
+      requestBody.sentence_count = count
+    } else {
+      requestBody.item_count = count
+      requestBody.item_type = this.orderingAiItemTypeTarget.value
+    }
+
+    const requestVersion = this.beginAiGeneration("ordering")
     this.orderingAiRequestPending = true
-    this.generatedOrdering = null
-    this.orderingAiApplyButtonTarget.hidden = true
-    this.orderingAiPreviewTarget.hidden = true
-    this.orderingAiGenerateButtonTarget.disabled = true
-    this.orderingAiGenerateButtonTarget.textContent = "Gerando..."
+    if (!refining) {
+      this.generatedOrdering = null
+      this.orderingAiApplyButtonTarget.hidden = true
+      this.orderingAiPreviewTarget.hidden = true
+    }
+    this.setAiBusy("ordering", true, refining)
     this.orderingAiStatusTarget.dataset.state = "loading"
     this.orderingAiStatusTarget.textContent = "A geração pode levar alguns instantes."
 
@@ -690,13 +839,23 @@ export default class extends Controller {
           "Accept": "application/json",
           "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || ""
         },
-        body: JSON.stringify({ topic, difficulty, item_count: itemCount, item_type: itemType })
+        body: JSON.stringify(requestBody)
       })
       const payload = await response.json().catch(() => null)
+      if (!this.aiGenerationIsCurrent("ordering", requestVersion)) return
       if (!response.ok) throw new Error(payload?.errors?.[0]?.message || "Não foi possível gerar a ordenação. Tente novamente.")
 
       const draft = payload?.data?.draft
-      if (!draft || !Array.isArray(draft.items) || !Array.isArray(draft.correct_order)) {
+      if (isMultipleSentences) {
+        const validSentences = draft?.format === "multiple_sentences" && Array.isArray(draft.sentences) &&
+          draft.sentences.length === count && draft.sentences.every((sentence) =>
+            sentence?.id && Array.isArray(sentence.items) && sentence.items.length >= 2 &&
+            sentence.items.every((item) => item?.id && typeof item.label === "string" && item.label.trim()) &&
+            Array.isArray(sentence.correct_order) && sentence.correct_order.length === sentence.items.length &&
+            sentence.correct_order.every((id) => sentence.items.some((item) => item.id === id))
+          )
+        if (!validSentences) throw new Error("A resposta recebida não contém frases de Ordenação válidas.")
+      } else if (!draft || !Array.isArray(draft.items) || !Array.isArray(draft.correct_order)) {
         throw new Error("A resposta recebida não contém uma Ordenação válida.")
       }
 
@@ -706,18 +865,34 @@ export default class extends Controller {
       this.orderingAiStatusTarget.dataset.state = "success"
       this.orderingAiStatusTarget.textContent = "Sugestão gerada na sequência correta. Revise antes de aplicá-la."
     } catch (error) {
-      this.orderingAiStatusTarget.dataset.state = "error"
-      this.orderingAiStatusTarget.textContent = error.message || "Não foi possível gerar a ordenação. Tente novamente."
+      if (this.aiGenerationIsCurrent("ordering", requestVersion)) {
+        this.orderingAiStatusTarget.dataset.state = "error"
+        this.orderingAiStatusTarget.textContent = error.message || "Não foi possível gerar a ordenação. Tente novamente."
+      }
     } finally {
-      this.orderingAiRequestPending = false
-      this.orderingAiGenerateButtonTarget.disabled = false
-      this.orderingAiGenerateButtonTarget.textContent = "Gerar sugestão"
+      if (this.aiGenerationIsCurrent("ordering", requestVersion)) {
+        this.orderingAiRequestPending = false
+        this.setAiBusy("ordering", false)
+      }
     }
   }
 
   renderOrderingPreview(draft) {
     this.orderingAiInstructionsTarget.textContent = draft.instructions
     this.orderingAiItemsTarget.replaceChildren()
+    if (draft.format === "multiple_sentences") {
+      this.orderingAiPreviewHeadingTarget.textContent = "Prévia das frases na ordem correta"
+      draft.sentences.forEach((sentence, index) => {
+        const itemsById = new Map(sentence.items.map((item) => [ item.id, item ]))
+        const row = document.createElement("li")
+        row.textContent = `Frase ${index + 1}: ${sentence.correct_order.map((id) => itemsById.get(id).label).join(" ")}`
+        this.orderingAiItemsTarget.append(row)
+      })
+      this.orderingAiPreviewTarget.hidden = false
+      return
+    }
+
+    this.orderingAiPreviewHeadingTarget.textContent = "Prévia na sequência correta"
     const itemsById = new Map(draft.items.map((item) => [ item.id, item ]))
     draft.correct_order.forEach((id) => {
       const item = itemsById.get(id)
@@ -733,16 +908,30 @@ export default class extends Controller {
   applyGeneratedOrdering(event) {
     event.preventDefault()
     if (!this.generatedOrdering || this.typeSelectTarget.value !== "ordering") return
+    const isMultipleSentences = this.generatedOrdering.format === "multiple_sentences"
+    const expectedFormat = isMultipleSentences ? "multiple_sentences" : "single_sequence"
+    if (this.orderingFormatTarget.value !== expectedFormat) return
     const hasExistingContent = this.orderingInstructionsTarget.value.trim() ||
-      [...this.orderingItemsListTarget.querySelectorAll("[data-ordering-item-value]")].some((input) => input.value.trim())
-    if (hasExistingContent && !window.confirm("Substituir as instruções e os itens atuais pela Ordenação gerada?")) return
+      [...this.orderingItemsListTarget.querySelectorAll("[data-ordering-item-value]")].some((input) => input.value.trim()) ||
+      [...this.orderingSentencesListTarget.querySelectorAll("[data-ordering-sentence-text]")].some((input) => input.value.trim())
+    const confirmationMessage = isMultipleSentences
+      ? "Substituir as instruções e as frases atuais pelas frases geradas?"
+      : "Substituir as instruções e os itens atuais pela Ordenação gerada?"
+    if (hasExistingContent && !window.confirm(confirmationMessage)) return
 
     this.orderingInstructionsTarget.value = this.generatedOrdering.instructions
-    this.orderingItemTypeTarget.value = this.generatedOrdering.item_type
-    this.orderingItemsListTarget.replaceChildren()
-    this.generatedOrdering.items.forEach((item) => this.appendOrderingItem(item))
-    this.updateOrderingItemNumbers()
-    this.changeOrderingItemType()
+    this.orderingInstructionsByFormat[expectedFormat] = this.generatedOrdering.instructions
+    if (isMultipleSentences) {
+      this.orderingSentencesListTarget.replaceChildren()
+      this.generatedOrdering.sentences.forEach((sentence) => this.appendOrderingSentence(sentence))
+      this.updateOrderingSentenceNumbers()
+    } else {
+      this.orderingItemTypeTarget.value = this.generatedOrdering.item_type
+      this.orderingItemsListTarget.replaceChildren()
+      this.generatedOrdering.items.forEach((item) => this.appendOrderingItem(item))
+      this.updateOrderingItemNumbers()
+      this.changeOrderingItemType()
+    }
     this.orderingErrorTarget.hidden = true
     this.orderingAiModalTarget.close()
   }
@@ -752,7 +941,7 @@ export default class extends Controller {
     if (!this.crosswordAiModalTarget.open) this.crosswordAiModalTarget.showModal()
   }
 
-  async generateCrossword(event) {
+  async generateCrossword(event, refining = false) {
     event.preventDefault()
     if (this.crosswordAiRequestPending) return
 
@@ -766,12 +955,17 @@ export default class extends Controller {
       return this.showAiValidation("Informe uma quantidade entre 2 e 20 palavras.", countField, this.crosswordAiStatusTarget)
     }
 
+    const refineRequest = this.prepareAiRefinement("crossword", refining)
+    if (!refineRequest) return
+
+    const requestVersion = this.beginAiGeneration("crossword")
     this.crosswordAiRequestPending = true
-    this.generatedCrossword = null
-    this.crosswordAiApplyButtonTarget.hidden = true
-    this.crosswordAiPreviewTarget.hidden = true
-    this.crosswordAiGenerateButtonTarget.disabled = true
-    this.crosswordAiGenerateButtonTarget.textContent = "Gerando..."
+    if (!refining) {
+      this.generatedCrossword = null
+      this.crosswordAiApplyButtonTarget.hidden = true
+      this.crosswordAiPreviewTarget.hidden = true
+    }
+    this.setAiBusy("crossword", true, refining)
     this.crosswordAiStatusTarget.dataset.state = "loading"
     this.crosswordAiStatusTarget.textContent = "A geração e a montagem da grade podem levar alguns instantes."
 
@@ -783,9 +977,13 @@ export default class extends Controller {
           "Accept": "application/json",
           "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || ""
         },
-        body: JSON.stringify({ topic, difficulty, word_count: wordCount })
+        body: JSON.stringify({
+          topic, difficulty, word_count: wordCount, refinement: refineRequest.refinement,
+          ...(refineRequest.previousDraft && { previous_draft: refineRequest.previousDraft })
+        })
       })
       const payload = await response.json().catch(() => null)
+      if (!this.aiGenerationIsCurrent("crossword", requestVersion)) return
       if (!response.ok) throw new Error(payload?.errors?.[0]?.message || "Não foi possível gerar a cruzadinha. Tente novamente.")
 
       const draft = payload?.data?.draft
@@ -799,12 +997,15 @@ export default class extends Controller {
       this.crosswordAiStatusTarget.dataset.state = "success"
       this.crosswordAiStatusTarget.textContent = "Palavras e pistas geradas. Revise antes de aplicá-las ao editor."
     } catch (error) {
-      this.crosswordAiStatusTarget.dataset.state = "error"
-      this.crosswordAiStatusTarget.textContent = error.message || "Não foi possível gerar a cruzadinha. Tente novamente."
+      if (this.aiGenerationIsCurrent("crossword", requestVersion)) {
+        this.crosswordAiStatusTarget.dataset.state = "error"
+        this.crosswordAiStatusTarget.textContent = error.message || "Não foi possível gerar a cruzadinha. Tente novamente."
+      }
     } finally {
-      this.crosswordAiRequestPending = false
-      this.crosswordAiGenerateButtonTarget.disabled = false
-      this.crosswordAiGenerateButtonTarget.textContent = "Gerar sugestão"
+      if (this.aiGenerationIsCurrent("crossword", requestVersion)) {
+        this.crosswordAiRequestPending = false
+        this.setAiBusy("crossword", false)
+      }
     }
   }
 
@@ -842,7 +1043,7 @@ export default class extends Controller {
     if (!this.memoryGameAiModalTarget.open) this.memoryGameAiModalTarget.showModal()
   }
 
-  async generateMemoryGame(event) {
+  async generateMemoryGame(event, refining = false) {
     event.preventDefault()
     if (this.memoryGameAiRequestPending) return
 
@@ -857,12 +1058,17 @@ export default class extends Controller {
       return this.showAiValidation("Informe uma quantidade entre 2 e 20 pares.", countField, this.memoryAiStatusTarget)
     }
 
+    const refineRequest = this.prepareAiRefinement("memoryGame", refining)
+    if (!refineRequest) return
+
+    const requestVersion = this.beginAiGeneration("memoryGame")
     this.memoryGameAiRequestPending = true
-    this.generatedMemoryGame = null
-    this.memoryAiApplyButtonTarget.hidden = true
-    this.memoryAiPreviewTarget.hidden = true
-    this.memoryAiGenerateButtonTarget.disabled = true
-    this.memoryAiGenerateButtonTarget.textContent = "Gerando..."
+    if (!refining) {
+      this.generatedMemoryGame = null
+      this.memoryAiApplyButtonTarget.hidden = true
+      this.memoryAiPreviewTarget.hidden = true
+    }
+    this.setAiBusy("memoryGame", true, refining)
     this.memoryAiStatusTarget.dataset.state = "loading"
     this.memoryAiStatusTarget.textContent = "A geração pode levar alguns instantes."
 
@@ -874,9 +1080,13 @@ export default class extends Controller {
           "Accept": "application/json",
           "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || ""
         },
-        body: JSON.stringify({ topic, difficulty, pair_count: pairCount, pair_type: pairType })
+        body: JSON.stringify({
+          topic, difficulty, pair_count: pairCount, pair_type: pairType, refinement: refineRequest.refinement,
+          ...(refineRequest.previousDraft && { previous_draft: refineRequest.previousDraft })
+        })
       })
       const payload = await response.json().catch(() => null)
+      if (!this.aiGenerationIsCurrent("memoryGame", requestVersion)) return
       if (!response.ok) throw new Error(payload?.errors?.[0]?.message || "Não foi possível gerar os pares. Tente novamente.")
 
       const draft = payload?.data?.draft
@@ -890,12 +1100,15 @@ export default class extends Controller {
       this.memoryAiStatusTarget.dataset.state = "success"
       this.memoryAiStatusTarget.textContent = "Pares gerados. Revise as relações antes de aplicá-las ao editor."
     } catch (error) {
-      this.memoryAiStatusTarget.dataset.state = "error"
-      this.memoryAiStatusTarget.textContent = error.message || "Não foi possível gerar os pares. Tente novamente."
+      if (this.aiGenerationIsCurrent("memoryGame", requestVersion)) {
+        this.memoryAiStatusTarget.dataset.state = "error"
+        this.memoryAiStatusTarget.textContent = error.message || "Não foi possível gerar os pares. Tente novamente."
+      }
     } finally {
-      this.memoryGameAiRequestPending = false
-      this.memoryAiGenerateButtonTarget.disabled = false
-      this.memoryAiGenerateButtonTarget.textContent = "Gerar sugestão"
+      if (this.aiGenerationIsCurrent("memoryGame", requestVersion)) {
+        this.memoryGameAiRequestPending = false
+        this.setAiBusy("memoryGame", false)
+      }
     }
   }
 
@@ -954,6 +1167,21 @@ export default class extends Controller {
     })
   }
 
+  changeOrderingFormat() {
+    const format = this.orderingFormatTarget.value === "multiple_sentences" ? "multiple_sentences" : "single_sequence"
+    if (this.currentOrderingFormat && this.currentOrderingFormat !== format) {
+      this.orderingInstructionsByFormat[this.currentOrderingFormat] = this.orderingInstructionsTarget.value
+      this.orderingInstructionsTarget.value = this.orderingInstructionsByFormat[format] || ""
+    }
+    this.currentOrderingFormat = format
+    const isMultipleSentences = format === "multiple_sentences"
+    this.orderingSingleFieldsTarget.hidden = isMultipleSentences
+    this.orderingMultipleFieldsTarget.hidden = !isMultipleSentences
+    this.orderingAiSingleFieldsTarget.hidden = isMultipleSentences
+    this.orderingAiMultipleFieldsTarget.hidden = !isMultipleSentences
+    this.orderingErrorTarget.hidden = true
+  }
+
   addOrderingItem(event) {
     event?.preventDefault()
     this.appendOrderingItem()
@@ -985,6 +1213,35 @@ export default class extends Controller {
 
   updateOrderingItemNumbers() {
     this.orderingItemsListTarget.querySelectorAll("[data-ordering-item-number]").forEach((number, index) => {
+      number.textContent = index + 1
+    })
+  }
+
+  addOrderingSentence(event) {
+    event?.preventDefault()
+    this.appendOrderingSentence()
+    this.updateOrderingSentenceNumbers()
+  }
+
+  appendOrderingSentence(sentence = {}) {
+    const fragment = this.orderingSentenceTemplateTarget.content.cloneNode(true)
+    const row = fragment.querySelector("[data-ordering-sentence]")
+    const orderedItems = Array.isArray(sentence.items) ? sentence.items : []
+    row.dataset.sentenceId = sentence.id || `sentence-${crypto.randomUUID()}`
+    row.dataset.existingItems = JSON.stringify(orderedItems)
+    row.querySelector("[data-ordering-sentence-text]").value = orderedItems.map((item) => item.label).join(" ")
+    this.orderingSentencesListTarget.append(fragment)
+    this.updateOrderingSentenceNumbers()
+  }
+
+  removeOrderingSentence(event) {
+    event.preventDefault()
+    event.currentTarget.closest("[data-ordering-sentence]").remove()
+    this.updateOrderingSentenceNumbers()
+  }
+
+  updateOrderingSentenceNumbers() {
+    this.orderingSentencesListTarget.querySelectorAll("[data-ordering-sentence-number]").forEach((number, index) => {
       number.textContent = index + 1
     })
   }
@@ -1227,12 +1484,17 @@ export default class extends Controller {
 
   serializeOrdering() {
     const instructions = this.orderingInstructionsTarget.value.trim()
-    const items = [...this.orderingItemsListTarget.querySelectorAll("[data-ordering-item]")]
-      .map((row) => ({ id: row.dataset.itemId, label: row.querySelector("[data-ordering-item-value]").value.trim() }))
     if (!instructions) {
       this.orderingErrorTarget.textContent = "Informe a pergunta ou instrução da ordenação."
       return null
     }
+
+    if (this.orderingFormatTarget.value === "multiple_sentences") {
+      return this.serializeMultipleSentenceOrdering(instructions)
+    }
+
+    const items = [...this.orderingItemsListTarget.querySelectorAll("[data-ordering-item]")]
+      .map((row) => ({ id: row.dataset.itemId, label: row.querySelector("[data-ordering-item-value]").value.trim() }))
     if (items.length < 2) {
       this.orderingErrorTarget.textContent = "Adicione pelo menos dois itens para ordenar."
       return null
@@ -1248,6 +1510,78 @@ export default class extends Controller {
 
     const correctOrder = items.map((item) => item.id)
     return { instructions, item_type: this.orderingItemTypeTarget.value, items, correct_order: correctOrder }
+  }
+
+  serializeMultipleSentenceOrdering(instructions) {
+    const rows = [...this.orderingSentencesListTarget.querySelectorAll("[data-ordering-sentence]")]
+    if (rows.length < 2) {
+      this.orderingErrorTarget.textContent = "Adicione pelo menos duas frases para ordenar."
+      return null
+    }
+
+    const usedSentenceIds = new Set()
+    const usedWordIds = new Set()
+    const sentences = []
+    for (const [ index, row ] of rows.entries()) {
+      const sentenceId = row.dataset.sentenceId
+      if (!sentenceId || usedSentenceIds.has(sentenceId)) {
+        this.orderingErrorTarget.textContent = `Frase ${index + 1}: o identificador não é válido.`
+        return null
+      }
+      usedSentenceIds.add(sentenceId)
+
+      const text = row.querySelector("[data-ordering-sentence-text]").value.trim()
+      const labels = text ? text.split(/\s+/u) : []
+      if (labels.length < 2) {
+        this.orderingErrorTarget.textContent = `Frase ${index + 1}: escreva pelo menos duas palavras.`
+        return null
+      }
+
+      const existingItems = JSON.parse(row.dataset.existingItems || "[]")
+      const items = this.orderingWordItems(labels, existingItems, usedWordIds)
+      sentences.push({ id: sentenceId, items, correct_order: items.map((item) => item.id) })
+    }
+
+    return { format: "multiple_sentences", instructions, sentences }
+  }
+
+  orderingWordItems(labels, existingItems, usedIds) {
+    const reusableIds = new Set(existingItems.filter((item) => item?.id && !usedIds.has(item.id)).map((item) => item.id))
+    const items = labels.map((label) => {
+      const existing = existingItems.find((item) => item?.id && reusableIds.has(item.id) && item.label === label)
+      if (!existing) return { id: null, label }
+
+      reusableIds.delete(existing.id)
+      usedIds.add(existing.id)
+      return { id: existing.id, label }
+    })
+
+    items.forEach((item, index) => {
+      if (item.id) return
+
+      const positionalItem = existingItems[index]
+      const reusableItem = positionalItem?.id && reusableIds.has(positionalItem.id)
+        ? positionalItem
+        : existingItems.find((candidate) => candidate?.id && reusableIds.has(candidate.id))
+      if (reusableItem) {
+        reusableIds.delete(reusableItem.id)
+        item.id = reusableItem.id
+      } else {
+        item.id = this.newOrderingId("word", usedIds)
+      }
+      usedIds.add(item.id)
+    })
+
+    return items
+  }
+
+  newOrderingId(prefix, usedIds) {
+    let id
+    do {
+      id = `${prefix}-${crypto.randomUUID()}`
+    } while (usedIds.has(id))
+    usedIds.add(id)
+    return id
   }
 
   rejectOrderingSubmission(event, message) {
@@ -1317,6 +1651,17 @@ export default class extends Controller {
     const itemsById = new Map(this.object.items.map((item) => [item.id, item]))
     const orderedIds = Array.isArray(this.object.correct_order) ? this.object.correct_order : this.object.items.map((item) => item.id)
     return [...orderedIds.map((id) => itemsById.get(id)).filter(Boolean), ...this.object.items.filter((item) => !orderedIds.includes(item.id))]
+  }
+
+  orderingSentencesForEditing() {
+    if (!Array.isArray(this.object.sentences)) return []
+    return this.object.sentences.map((sentence) => {
+      const items = Array.isArray(sentence.items) ? sentence.items : []
+      const itemsById = new Map(items.map((item) => [item.id, item]))
+      const orderedIds = Array.isArray(sentence.correct_order) ? sentence.correct_order : items.map((item) => item.id)
+      const orderedItems = orderedIds.map((id) => itemsById.get(id)).filter(Boolean)
+      return { ...sentence, items: [...orderedItems, ...items.filter((item) => !orderedIds.includes(item.id))] }
+    })
   }
 
   inferOrderingItemType() {

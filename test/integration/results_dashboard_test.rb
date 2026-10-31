@@ -2,7 +2,8 @@ require "test_helper"
 
 class ResultsDashboardTest < ActionDispatch::IntegrationTest
   setup do
-    @teacher = Teacher.create!(name: "Professora", username: "reportteacher", email: "reportteacher@example.com", password: "secret123")
+    teacher_id = "results_dashboard_#{Process.pid}_#{SecureRandom.hex(6)}"
+    @teacher = Teacher.create!(name: "Professora", username: teacher_id, email: "#{teacher_id}@example.test", password: "secret123")
     @school_class = @teacher.school_classes.create!(name: "Turma de resultados", active: true)
     @activity = @school_class.activities.create!(title: "Resultados", published: true)
     @student = create_student("reportstudent")
@@ -11,7 +12,8 @@ class ResultsDashboardTest < ActionDispatch::IntegrationTest
       @school_class.class_students.create!(student:, active: true)
     end
 
-    other_teacher = Teacher.create!(name: "Outro professor", username: "otherreportteacher", email: "otherreportteacher@example.com", password: "secret123")
+    other_teacher_id = "results_dashboard_other_#{Process.pid}_#{SecureRandom.hex(6)}"
+    other_teacher = Teacher.create!(name: "Outro professor", username: other_teacher_id, email: "#{other_teacher_id}@example.test", password: "secret123")
     @other_school_class = other_teacher.school_classes.create!(name: "Turma privada", active: true)
   end
 
@@ -97,6 +99,41 @@ class ResultsDashboardTest < ActionDispatch::IntegrationTest
     assert_nil ActivityResults.activity_average_percentage(activity_exercise: zero_points)
     assert_equal official_quiz_attempt, ActivityResults.official_attempt(activity_exercise: quiz, student: @student)
     assert_not_equal official_quiz_attempt, later_quiz_attempt
+  end
+
+  test "teacher dashboard reports exact multiple sentence percentage and per-word performance" do
+    activity = @school_class.activities.create!(title: "Aula de frases em rascunho")
+    exercise = @teacher.exercises.create!(
+      title: "Frases embaralhadas",
+      exercise_type: :ordering,
+      object: {
+        "format" => "multiple_sentences",
+        "instructions" => "Organize as frases.",
+        "sentences" => [
+          { "id" => "sentence-one", "items" => [ { "id" => "a", "label" => "I" }, { "id" => "b", "label" => "think" }, { "id" => "c", "label" => "I" }, { "id" => "d", "label" => "can." } ], "correct_order" => %w[a b c d] },
+          { "id" => "sentence-two", "items" => [ { "id" => "e", "label" => "We" }, { "id" => "f", "label" => "will" }, { "id" => "g", "label" => "go" }, { "id" => "h", "label" => "now." } ], "correct_order" => %w[e f g h] }
+        ]
+      }
+    )
+    activity_exercise = activity.activity_exercises.create!(exercise:, position: 1, points: 100)
+    attempt = Exercises::OrderingSubmission.call(
+      activity_exercise:,
+      student: @student,
+      sentences: [
+        { "id" => "sentence-two", "ordered_ids" => %w[e h f g] },
+        { "id" => "sentence-one", "ordered_ids" => %w[c b a d] }
+      ]
+    ).attempt
+
+    post login_url, params: { role: "teacher", username: @teacher.username, password: "secret123" }
+    get exercise_attempts_url, params: { school_class_id: @school_class.id }
+
+    assert_response :success
+    assert_includes response.body, "62.5%"
+    assert_select "details.item-performance"
+    assert_select ".item-performance td", text: "Frase 1: I", count: 2
+    assert_select ".item-performance td", text: "Frase 2: We", count: 1
+    assert_equal attempt, ActivityResults.official_attempt(activity_exercise:, student: @student)
   end
 
   test "student sees only their class report and can read an inactive official attempt" do
@@ -191,7 +228,8 @@ class ResultsDashboardTest < ActionDispatch::IntegrationTest
   private
 
   def create_student(username)
-    Student.create!(name: username, username:, email: "#{username}@example.com", password: "secret123")
+    unique_username = "#{username}_#{Process.pid}_#{SecureRandom.hex(6)}"
+    Student.create!(name: username, username: unique_username, email: "#{unique_username}@example.test", password: "secret123")
   end
 
   def create_exercise_link(type, object, title:, points:)

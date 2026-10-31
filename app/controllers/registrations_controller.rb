@@ -3,12 +3,17 @@ class RegistrationsController < ApplicationController
 
   def new
     @role = normalized_role(params[:role])
-    redirect_to login_path, alert: "Perfil inválido." unless @role
+    return redirect_to login_path, alert: "Perfil inválido." unless @role
+
+    @user = model_for(@role).new
   end
 
   def create
     @role = normalized_role(params[:role])
+    return redirect_to login_path, alert: "Perfil inválido." unless @role
+
     @user = model_for(@role).new(registration_params)
+    @user.require_password_confirmation = true
 
     if @user.save
       sign_in(@user)

@@ -73,6 +73,9 @@ class CrosswordAiGenerationTest < ActionDispatch::IntegrationTest
     assert draft.key?("layout_seed")
     assert Exercises::ExerciseContentValidator.call(exercise_type: "crossword", object: draft).success?
     assert_equal 1, @client.calls.length
+    assert_includes @client.calls.first.fetch(:input), "Fruit"
+    assert_includes @client.calls.first.fetch(:input), "Dificuldade: medium"
+    assert_includes @client.calls.first.fetch(:input), "Quantidade exata de palavras: 3"
 
     draft.fetch("words").find { |word| word.fetch("word") == "APPLE" }["clue"] = "Revisada pelo professor"
     assert_difference("Exercise.count") do

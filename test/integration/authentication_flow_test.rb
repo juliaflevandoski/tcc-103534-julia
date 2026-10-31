@@ -128,7 +128,9 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     assert_select "template[data-exercise-form-target='questionTemplate'] select[data-question-type] option[value='short_answer']"
     assert_select "template[data-exercise-form-target='questionTemplate'] select[data-question-type] option[value='multiple_answer']", count: 0
     assert_select "div[data-exercise-form-target='questionsList']"
+    assert_select "div[data-exercise-form-target='rawFields'][hidden]"
     assert_select "textarea[data-exercise-form-target='rawObject']"
+    assert_select "input[type='hidden'][name='exercise[object]']"
 
     assert_difference("Exercise.count") do
       post exercises_url, params: { exercise: { title: "Quiz de matemática", exercise_type: "quiz", object: { questions: [ { question_type: "multiple_choice", statement: "Quanto é 2 + 2?", options: [ { id: "a", text: "4" }, { id: "b", text: "5" } ], correct_option_ids: [ "a" ] }, { question_type: "true_false", statement: "2 + 2 é igual a 4?", correct_option_ids: [ "true" ] }, { question_type: "short_answer", statement: "Qual é o resultado?", correct_answer: "4" } ] }.to_json } }
@@ -139,12 +141,19 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     assert_equal %w[multiple_choice true_false short_answer], exercise.object["questions"].pluck("question_type")
     assert_equal [ "a" ], exercise.object["questions"].first["correct_option_ids"]
 
+    get edit_exercise_url(exercise)
+    assert_response :success
+    assert_select "div[data-exercise-form-target='rawFields'][hidden]"
+    assert_select "input[type='hidden'][name='exercise[object]']"
+
     get activity_url(activity)
     assert_select "form[action='#{activity_exercises_path}']"
     get edit_activity_url(activity)
-    assert_select "form[action='#{activity_exercises_path}']"
+    assert_response :success
+    assert_select "form[action='#{activity_exercises_path}']", count: 0
+    assert_select "table.exercise-table", count: 0
     get school_class_url(school_class)
-    assert_select "form[action='#{activity_exercises_path}']"
+    assert_select "form[action='#{activity_exercises_path}']", count: 0
 
     assert_difference("ActivityExercise.count") do
       post activity_exercises_url, params: { activity_exercise: { activity_id: activity.id, exercise_id: exercise.id, points: 5 } }
@@ -178,7 +187,7 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     assert_equal [ third_exercise.id, second_exercise.id ], activity.reload.activity_exercises.active.ordered.pluck(:exercise_id)
 
     get activity_url(activity)
-    assert_select "a[href='#{new_exercise_path}']", text: "Criar exercício"
+    assert_select "a[href='#{new_exercise_path(activity_id: activity.id)}']", text: "Criar exercício"
     assert_select "tr[data-id='#{second_exercise.activity_exercises.first.id}'] td form[action='#{activity_exercise_path(second_exercise.activity_exercises.first)}'] input[name='_method'][value='delete']"
     assert_select "tr[data-id='#{second_exercise.activity_exercises.first.id}'] i.fa-solid.fa-grip-vertical"
     assert_select "tr[data-id='#{second_exercise.activity_exercises.first.id}'] span[data-position]", text: "2"
@@ -328,6 +337,7 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "button.memory-card[data-memory-game-target='card']", count: 4
     assert_select "strong[data-memory-game-target='finalXp']"
+    assert_select "section[data-memory-game-target='completion'][hidden] a[href='#{activity_path(activity_exercise.activity)}']", text: "Voltar à aula", count: 1
     assert_not_includes response.body, "DOG"
     assert_not_includes response.body, "pair_id"
 
@@ -353,6 +363,7 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     get exercise_url(exercise, activity_exercise_id: activity_exercise.id, memory_game_attempt_id: attempt.id)
     assert_response :success
     assert_includes response.body, "XP concedido nesta partida: 11"
+    assert_select ".memory-result a[href='#{activity_path(activity_exercise.activity)}']", text: "Voltar à aula", count: 1
     delete exercise_attempt_url(attempt)
     assert_redirected_to exercise_attempts_url
     assert_not attempt.reload.active?
@@ -604,8 +615,9 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
       }
     end
 
-    assert_redirected_to exercise_url(exercise, activity_exercise_id: activity_exercise.id)
-    assert_equal "Preencha todas as respostas obrigatórias antes de enviar a atividade.", flash[:alert]
+    assert_response :unprocessable_entity
+
+    assert_includes response.body, "Preencha todas as respostas obrigatórias antes de enviar a atividade."
     assert_not StudentStat.exists?(student_id: student.id)
     assert_nil ActivityResults.official_attempt(activity_exercise:, student:)
     assert_not ActivityResults.lesson_completed?(activity: activity_exercise.activity, student:)

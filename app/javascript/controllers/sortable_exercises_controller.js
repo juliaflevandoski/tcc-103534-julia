@@ -38,20 +38,25 @@ export default class extends Controller {
     this.persistOrder()
   }
 
-  persistOrder() {
+  async persistOrder() {
     const orderedIds = [...this.listTarget.querySelectorAll("tr[data-id]")].map((row) => row.dataset.id)
-    fetch(this.urlValue, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "X-CSRF-Token": document.querySelector("meta[name='csrf-token']").content
-      },
-      body: JSON.stringify({ ordered_ids: orderedIds })
-    }).then((response) => {
-      if (!response.ok) window.location.reload()
-      else this.updateDisplayedPositions()
-    })
+    try {
+      const response = await fetch(this.urlValue, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "X-CSRF-Token": document.querySelector("meta[name='csrf-token']").content
+        },
+        body: JSON.stringify({ ordered_ids: orderedIds })
+      })
+      // Um redirecionamento seguido pelo fetch resulta em 200 HTML e não significa que a ordem foi salva.
+      const payload = response.ok && !response.redirected ? await response.json() : null
+      if (payload?.data?.positions === "updated") this.updateDisplayedPositions()
+      else window.location.reload()
+    } catch {
+      window.location.reload()
+    }
   }
 
   updateDisplayedPositions() {

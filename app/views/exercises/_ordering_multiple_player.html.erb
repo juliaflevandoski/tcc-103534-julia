@@ -1,0 +1,33 @@
+<h1><%= exercise.title %></h1>
+<p><%= instructions %></p>
+<p><%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if activity_exercise&.persisted? %></p>
+
+<%= form_with url: exercise_attempts_path, scope: :exercise_attempt,
+	data: { controller: "ordering-multiple-player", action: "submit->ordering-multiple-player#submit" } do %>
+	<%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
+	<%= hidden_field_tag "exercise_attempt[sentences_json]", "[]", data: { ordering_multiple_player_target: "answerInput" } %>
+	<% sentences.each_with_index do |sentence, index| %>
+		<section class="ordering-multiple-sentence" data-ordering-multiple-player-target="sentence" data-sentence-id="<%= sentence.fetch("id") %>" data-expected-ids="<%= sentence.fetch("items").map { |item| item.fetch("id") }.to_json %>">
+			<h2>Frase <%= index + 1 %></h2>
+			<ol class="ordering-player-list" data-ordering-multiple-player-list>
+				<% sentence.fetch("items").each do |item| %>
+					<li data-ordering-multiple-player-target="item" data-item-id="<%= item.fetch("id") %>" draggable="true"
+						data-action="dragstart->ordering-multiple-player#startDrag dragover->ordering-multiple-player#allowDrop drop->ordering-multiple-player#drop dragend->ordering-multiple-player#endDrag">
+						<span class="ordering-player-label"><%= item.fetch("label") %></span>
+						<span class="ordering-player-actions">
+							<button type="button" data-action="ordering-multiple-player#moveUp" aria-label="Mover palavra para cima" title="Mover para cima">
+								<i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
+							</button>
+							<button type="button" data-action="ordering-multiple-player#moveDown" aria-label="Mover palavra para baixo" title="Mover para baixo">
+								<i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
+							</button>
+						</span>
+					</li>
+				<% end %>
+			</ol>
+		</section>
+	<% end %>
+	<p class="ordering-player-status" data-ordering-multiple-player-target="status" role="status" aria-live="polite">Você pode reorganizar as palavras em cada frase. O envio ainda não está disponível.</p>
+	<p id="ordering-multiple-submission-notice">O envio das respostas estará disponível em uma próxima etapa.</p>
+	<button type="submit" class="button" data-ordering-multiple-player-target="submitButton" disabled aria-describedby="ordering-multiple-submission-notice">Enviar respostas</button>
+<% end %>

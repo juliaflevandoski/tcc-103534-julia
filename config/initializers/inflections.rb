@@ -14,3 +14,9 @@
 # ActiveSupport::Inflector.inflections(:en) do |inflect|
 #   inflect.acronym "RESTful"
 # end
+
+# Plural simples em português, usado por helpers como `pluralize` ("exercício" -> "exercícios").
+ActiveSupport::Inflector.inflections(:"pt-BR") do |inflect|
+  inflect.plural(/$/, "s")
+  inflect.singular(/s$/, "")
+end

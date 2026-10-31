@@ -42,7 +42,11 @@ module Exercises
       when "fill_blanks"
         fill_blanks_response_complete?(object, submitted)
       when "ordering"
-        ordering_response_complete?(object, submitted)
+        if object["format"] == ExerciseContentValidator::MULTIPLE_SENTENCES_FORMAT
+          multiple_sentence_ordering_response_complete?(object, submitted)
+        else
+          ordering_response_complete?(object, submitted)
+        end
       when "crossword"
         crossword_response_complete?(object, submitted)
       else
@@ -106,6 +110,36 @@ module Exercises
     end
     private_class_method :ordering_response_complete?
 
+    def self.multiple_sentence_ordering_response_complete?(object, submitted)
+      expected_sentences = object["sentences"]
+      submitted_sentences = submitted["sentences"]
+      return false unless submitted.keys == [ "sentences" ] && expected_sentences.is_a?(Array) &&
+        expected_sentences.length >= 2 && submitted_sentences.is_a?(Array) && submitted_sentences.length == expected_sentences.length
+
+      expected_by_id = expected_sentences.to_h do |sentence|
+        return false unless sentence.is_a?(Hash) && sentence["id"].is_a?(String) && sentence["items"].is_a?(Array)
+
+        [ sentence.fetch("id"), sentence.fetch("items").filter_map { |item| item["id"] if item.is_a?(Hash) } ]
+      end
+      return false unless expected_by_id.keys.uniq.length == expected_sentences.length
+
+      submitted_ids = submitted_sentences.filter_map do |sentence|
+        sentence.fetch("id") if sentence.is_a?(Hash) && sentence["id"].is_a?(String)
+      end
+      return false unless submitted_ids.length == submitted_sentences.length && submitted_ids.uniq.length == expected_sentences.length
+      return false unless submitted_ids.sort == expected_by_id.keys.sort
+
+      submitted_sentences.all? do |sentence|
+        next false unless sentence.keys.sort == %w[id ordered_ids]
+
+        ordered_ids = sentence["ordered_ids"]
+        expected_ids = expected_by_id.fetch(sentence.fetch("id"))
+        ordered_ids.is_a?(Array) && ordered_ids.length == expected_ids.length && ordered_ids.all? { |id| id.is_a?(String) } &&
+          ordered_ids.uniq.length == expected_ids.length && ordered_ids.sort == expected_ids.sort
+      end
+    end
+    private_class_method :multiple_sentence_ordering_response_complete?
+
     def self.crossword_response_complete?(object, submitted)
       submitted_cells = submitted.dig("cells")
       grid = object.dig("grid", "cells")
@@ -139,6 +173,10 @@ module Exercises
         statuses.is_a?(Array) && statuses.map { |status| status["id"] }.sort == blank_ids.sort &&
           statuses.all? { |status| [ true, false ].include?(status["correct"]) }
       when "ordering"
+        if exercise.object.deep_stringify_keys["format"] == ExerciseContentValidator::MULTIPLE_SENTENCES_FORMAT
+          return valid_multiple_sentence_grading_snapshot?(exercise, correct)
+        end
+
         statuses = correct["positions"]
         expected_ids = Array(exercise.object["correct_order"])
         statuses.is_a?(Array) && statuses.map { |status| status["expected_item_id"] } == expected_ids &&
@@ -152,6 +190,34 @@ module Exercises
       end
     end
     private_class_method :valid_grading_snapshot?
+
+    def self.valid_multiple_sentence_grading_snapshot?(exercise, correct)
+      object = stringify(exercise.object)
+      expected_sentences = object["sentences"]
+      graded_sentences = correct["sentences"]
+      return false unless expected_sentences.is_a?(Array) && graded_sentences.is_a?(Array) &&
+        graded_sentences.length == expected_sentences.length
+
+      positions = []
+      valid_sentences = expected_sentences.zip(graded_sentences).all? do |expected, graded|
+        expected_order = Array(expected["correct_order"])
+        sentence_positions = graded.is_a?(Hash) && graded["positions"]
+        next false unless graded.is_a?(Hash) && graded["id"] == expected["id"] && sentence_positions.is_a?(Array) &&
+          sentence_positions.length == expected_order.length &&
+          sentence_positions.all? { |position| position.is_a?(Hash) && [ true, false ].include?(position["correct"]) } &&
+          sentence_positions.map { |position| position["expected_item_id"] } == expected_order &&
+          sentence_positions.map { |position| position["expected_label"] }.all? { |label| label.is_a?(String) }
+
+        positions.concat(sentence_positions)
+        true
+      end
+      return false unless valid_sentences && positions.any?
+
+      correct_count = positions.count { |position| position["correct"] }
+      correct["correct"] == (correct_count == positions.length) &&
+        correct["positions_correct"] == correct_count && correct["total_positions"] == positions.length
+    end
+    private_class_method :valid_multiple_sentence_grading_snapshot?
 
     def self.valid_memory_game_attempt?(attempt, answer, correct)
       return false unless answer["completed"] == true

@@ -13,6 +13,9 @@ Rails.application.routes.draw do
   resources :school_classes do
     post :join, on: :collection
     delete :leave, on: :member
+    resources :class_posts, path: "mural", only: %i[index create edit update destroy] do
+      resources :comments, controller: "class_post_comments", only: %i[create edit update destroy]
+    end
   end
   resources :class_students
   resources :activities

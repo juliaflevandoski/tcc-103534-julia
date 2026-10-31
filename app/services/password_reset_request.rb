@@ -11,7 +11,7 @@ class PasswordResetRequest
   end
 
   def call
-    user = model.active.find_by(email: @email)
+    user = model.active.find_by(email: @email.to_s)
     return unless user
 
     token = SecureRandom.urlsafe_base64(32)

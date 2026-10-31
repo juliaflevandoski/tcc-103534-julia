@@ -62,6 +62,10 @@ class MemoryGameAiGenerationTest < ActionDispatch::IntegrationTest
     assert_equal 2, draft.fetch("pairs").length
     assert draft.fetch("pairs").all? { |pair| pair.keys.sort == %w[id left right] && pair.fetch("id").present? }
     assert Exercises::ExerciseContentValidator.call(exercise_type: "memory_game", object: draft).success?
+    assert_includes @client.calls.first.fetch(:input), "Animais"
+    assert_includes @client.calls.first.fetch(:input), "Dificuldade: medium"
+    assert_includes @client.calls.first.fetch(:input), "Quantidade exata de pares: 2"
+    assert_includes @client.calls.first.fetch(:input), "Tipo de associação: word_word"
 
     draft["pairs"].first["right"]["content"] = "CÃO (revisado)"
     assert_difference("Exercise.count") do
@@ -162,6 +166,49 @@ class MemoryGameAiGenerationTest < ActionDispatch::IntegrationTest
     assert_select "input[data-memory-image][accept='image/png,image/jpeg,image/webp']"
     assert_select "input[data-exercise-form-target='memoryAiTopic'][required]", count: 0
     assert_select "button[data-action='exercise-form#addMemoryPair']", text: "Adicionar par"
+  end
+
+  test "editing a memory game provides its saved pair type and image URLs to the editor" do
+    exercise = @teacher.exercises.create!(
+      title: "Animais e imagens",
+      exercise_type: :memory_game,
+      object: {
+        "instructions" => "Combine os nomes.",
+        "pair_type" => "word_word",
+        "pairs" => [
+          { "id" => "pair-1", "left" => { "type" => "word", "content" => "DOG" }, "right" => { "type" => "word", "content" => "CÃO" } },
+          { "id" => "pair-2", "left" => { "type" => "word", "content" => "CAT" }, "right" => { "type" => "word", "content" => "GATO" } }
+        ]
+      }
+    )
+    png_data = Base64.decode64("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jM2kAAAAASUVORK5CYII=")
+    blob_ids = 2.times.map do |index|
+      Tempfile.create([ "memory-edit-image", ".png" ]) do |file|
+        file.binmode
+        file.write(png_data)
+        file.rewind
+        exercise.memory_images.attach(io: file, filename: "animal-#{index + 1}.png", content_type: "image/png")
+      end
+      exercise.memory_images_attachments.reload.last.blob_id
+    end
+    exercise.update!(object: {
+      "instructions" => "Combine os nomes.",
+      "pair_type" => "word_image",
+      "pairs" => blob_ids.each_with_index.map do |blob_id, index|
+        { "id" => "pair-#{index + 1}", "left" => { "type" => "word", "content" => %w[DOG CAT][index] }, "right" => { "type" => "image", "blob_id" => blob_id } }
+      end
+    })
+
+    get edit_exercise_url(exercise)
+
+    assert_response :success
+    form = css_select("form[data-controller~='exercise-form']").first
+    editor_object = JSON.parse(css_select("input[data-exercise-form-target='objectInput']").first["value"])
+    image_urls = JSON.parse(form["data-exercise-form-memory-game-image-urls-value"])
+    assert_equal "word_image", editor_object.fetch("pair_type")
+    assert_equal blob_ids, editor_object.fetch("pairs").map { |pair| pair.dig("right", "blob_id") }
+    assert_equal blob_ids.map(&:to_s), image_urls.keys
+    assert image_urls.values.all?(&:present?)
   end
 
   test "invalid parameters are rejected before calling the API" do

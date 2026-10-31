@@ -64,6 +64,33 @@ class Exercises::QuizGeneratorTest < ActiveSupport::TestCase
     assert_equal %w[multiple_choice true_false short_answer], call.dig(:schema, "properties", "questions", "items", "anyOf").map { |branch| branch.dig("properties", "question_type", "enum").first }
   end
 
+  test "each difficulty level adds its quiz-specific reasoning criteria" do
+    criteria = {
+      "easy" => "reconhecimento e compreensão de conceitos fundamentais",
+      "medium" => "aplicação e interpretação de conceitos em situações familiares",
+      "hard" => "análise e comparação de conceitos, aplicação em contextos novos"
+    }
+    prompts = criteria.map do |difficulty, criterion|
+      client = fake_client(data: @quiz)
+      result = build_generator(client).call(
+        topic: "Ciências naturais",
+        difficulty:,
+        question_count: @quiz.fetch("questions").length,
+        question_types: Exercises::ExerciseContentValidator::QUESTION_TYPES
+      )
+      call = client.calls.fetch(0)
+
+      assert result.success?
+      assert_includes call.fetch(:instructions), criterion
+      assert_includes call.fetch(:instructions), "Aplique o nível selecionado: #{difficulty}."
+      assert_includes call.fetch(:input), "Nível: #{difficulty}"
+      assert_includes call.fetch(:input), "Quantidade de questões: #{@quiz.fetch("questions").length}"
+      call.fetch(:instructions)
+    end
+
+    assert_equal 3, prompts.uniq.length
+  end
+
   test "accepts one question type as a string and both inclusive question-count limits" do
     [ 1, 20 ].each do |count|
       questions = Array.new(count) { |index| multiple_choice_question("Questão única #{index + 1}?") }

@@ -10,8 +10,9 @@ class SessionsController < ApplicationController
     user = authenticate_user(role)
 
     if user
+      return_to = consume_return_location
       sign_in(user)
-      redirect_to root_path, notice: "Login realizado com sucesso."
+      redirect_to(return_to || root_path, notice: "Login realizado com sucesso.")
     else
       redirect_to login_path(role: role), alert: "Usuário ou senha inválidos."
     end

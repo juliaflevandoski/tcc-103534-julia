@@ -17,7 +17,7 @@
 					<%= "Tentativa não oficial" unless is_official %>
 					<%= "Desativada" unless attempt.active? %>
 					<%= link_to "Detalhes", exercise_attempt_path(attempt) %>
-					<%= button_to "Desativar", exercise_attempt_path(attempt), method: :delete, class: "button danger" if current_teacher && attempt.active? %>
+					<%= button_to "Desativar", exercise_attempt_path(attempt), method: :delete, class: "button danger", form: { data: { turbo_confirm: "Desativar esta tentativa? Ela deixará de aparecer no histórico." } } if current_teacher && attempt.active? %>
 				</li>
 			<% end %>
 		</ol>

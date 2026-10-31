@@ -14,11 +14,14 @@
 			<p>Pontuação: <%= attempt.score %></p>
 			<p>XP concedido nesta partida: <%= attempt.correct["xp_award_claimed"] ? attempt.score : 0 %></p>
 			<p>Tempo: <%= attempt.time_spent || 0 %> segundos</p>
+			<%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if activity_exercise&.persisted? %>
+			<%= link_to "Próximo exercício", exercise_path(next_activity_exercise.exercise, activity_exercise_id: next_activity_exercise.id), class: "button" if local_assigns[:next_activity_exercise] %>
 		</section>
 	<% end %>
 	<%= form_with url: exercise_attempts_path, scope: :exercise_attempt do %>
 		<%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
 		<%= submit_tag(attempt ? "Jogar novamente" : "Começar jogo", class: "button") %>
+		<%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if attempt.nil? && activity_exercise&.persisted? %>
 	<% end %>
 <% else %>
 	<div class="memory-game" data-controller="memory-game" data-memory-game-turn-url-value="<%= memory_game_turn_exercise_attempt_path(attempt) %>">
@@ -28,6 +31,7 @@
 			<p>Erros: <strong data-memory-game-target="errors"><%= game.fetch(:errors) %></strong></p>
 			<p>Pontuação: <strong data-memory-game-target="score"><%= game.fetch(:score) %></strong></p>
 		</div>
+		<p class="memory-game-back-link"><%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if activity_exercise&.persisted? %></p>
 		<p data-memory-game-target="status" role="status"></p>
 		<div class="memory-board" data-memory-game-target="board" aria-label="Tabuleiro do jogo da memória">
 			<% revealed_cards = game.fetch(:revealed_cards).index_by { |card| card.fetch("id") } %>
@@ -65,6 +69,8 @@
 			<p>Pontuação: <strong data-memory-game-target="finalScore"></strong></p>
 			<p>XP concedido nesta partida: <strong data-memory-game-target="finalXp"></strong></p>
 			<p>Tempo: <strong data-memory-game-target="finalTime"></strong> segundos</p>
+			<%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if activity_exercise&.persisted? %>
+			<%= link_to "Próximo exercício", exercise_path(next_activity_exercise.exercise, activity_exercise_id: next_activity_exercise.id), class: "button" if local_assigns[:next_activity_exercise] %>
 			<%= form_with url: exercise_attempts_path, scope: :exercise_attempt do %>
 				<%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
 				<%= submit_tag "Jogar novamente", class: "button" %>

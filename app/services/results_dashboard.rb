@@ -114,8 +114,21 @@ class ResultsDashboard
         [ id, "Lacuna #{id}", item["correct"] == true ]
       end
     when "ordering"
-      Array(snapshot["positions"]).each_with_index.map do |item, index|
-        [ item.fetch("expected_item_id", index).to_s, item.fetch("expected_label", "Item #{index + 1}"), item["correct"] == true ]
+      if exercise.object.deep_stringify_keys["format"] == Exercises::ExerciseContentValidator::MULTIPLE_SENTENCES_FORMAT
+        object_sentences = exercise.object.deep_stringify_keys.fetch("sentences").index_by { |sentence| sentence.fetch("id") }
+        Array(snapshot["sentences"]).flat_map do |sentence_result|
+          sentence = object_sentences.fetch(sentence_result.fetch("id"))
+          sentence_number = object_sentences.keys.index(sentence.fetch("id")) + 1
+          Array(sentence_result["positions"]).map do |item|
+            key = "#{sentence.fetch("id")}:#{item.fetch("expected_item_id")}".to_s
+            label = "Frase #{sentence_number}: #{item.fetch("expected_label", "Palavra")}"
+            [ key, label, item["correct"] == true ]
+          end
+        end
+      else
+        Array(snapshot["positions"]).each_with_index.map do |item, index|
+          [ item.fetch("expected_item_id", index).to_s, item.fetch("expected_label", "Item #{index + 1}"), item["correct"] == true ]
+        end
       end
     when "crossword"
       snapshot.fetch("statuses", {}).map do |id, correct|

@@ -44,6 +44,28 @@ class Exercises::FillBlanksGeneratorTest < ActiveSupport::TestCase
     assert_includes client.calls.first.fetch(:instructions), "Aplique o nível selecionado: medium"
   end
 
+  test "each difficulty level adds fill blanks-specific context criteria" do
+    criteria = {
+      "easy" => "contexto explícito e respostas facilmente identificáveis",
+      "medium" => "compreensão do contexto e relações entre informações",
+      "hard" => "interpretação mais aprofundada e compreensão de estruturas ou conceitos mais complexos"
+    }
+    prompts = criteria.map do |difficulty, criterion|
+      client = fake_client(data: valid_data)
+      result = build_generator(client).call(topic: "O ciclo da água", difficulty:, blank_count: 1)
+      call = client.calls.fetch(0)
+
+      assert result.success?
+      assert_includes call.fetch(:instructions), criterion
+      assert_includes call.fetch(:instructions), "Aplique o nível selecionado: #{difficulty}."
+      assert_includes call.fetch(:input), "Dificuldade: #{difficulty}"
+      assert_includes call.fetch(:input), "Quantidade exata de lacunas: 1"
+      call.fetch(:instructions)
+    end
+
+    assert_equal 3, prompts.uniq.length
+  end
+
   test "rejects invalid common parameters and blank counts before calling the API" do
     [
       { topic: " ", difficulty: "easy", blank_count: 1 },

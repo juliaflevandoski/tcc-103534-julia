@@ -4,16 +4,29 @@ module Exercises
     MAX_PAIRS = 20
     SCHEMA_NAME = "ludus_memory_game_draft"
     PAIR_TYPES = MemoryGameBuilder::PAIR_TYPES.keys.freeze
+    DIFFICULTY_DESCRIPTIONS = {
+      "easy" => "Fácil: associe elementos por relações diretas e facilmente reconhecíveis no tema.",
+      "medium" => "Médio: associe elementos cuja relação exija compreender seus significados ou usos em um contexto familiar.",
+      "hard" => "Difícil: associe elementos por relações conceituais mais elaboradas, mas sempre corretas, claras e justificáveis pelo tema."
+    }.freeze
 
-    def call(topic: nil, difficulty: nil, pair_count: nil, pair_type: nil)
+    def call(topic: nil, difficulty: nil, pair_count: nil, pair_type: nil, refinement: nil, previous_draft: nil)
+      error = refinement_error(refinement:, previous_draft:)
+      return failure(:invalid_input, error) if error
+
       count = parse_count(pair_count, minimum: MIN_PAIRS, maximum: MAX_PAIRS)
       return failure(:invalid_input, "Informe tema, dificuldade, tipo de associação e entre 2 e 20 pares.") unless valid_topic_and_difficulty?(topic, difficulty) && count && PAIR_TYPES.include?(pair_type)
+
+      reference = previous_reference_for("memory_game", previous_draft, { pair_type: })
+      return reference if reference.is_a?(Result)
 
       data = request_json(
         instructions: instructions_for(difficulty, count, pair_type),
         input: input_for(topic, difficulty, count, pair_type),
         schema_name: SCHEMA_NAME,
-        schema: schema_for(count, pair_type)
+        schema: schema_for(count, pair_type),
+        refinement:,
+        previous_reference: reference
       )
       return data if data.is_a?(Result)
       return invalid_response unless data.keys.sort == %w[instructions pairs]
@@ -38,8 +51,8 @@ module Exercises
       when "image_image" then "cada par deve conter duas descrições textuais de imagens que o professor deverá adicionar manualmente"
       end
       <<~INSTRUCTIONS.strip
-        Gere um candidato educacional para um Jogo da Memória, para revisão do professor. #{difficulty_instructions(difficulty)}
-        Gere exatamente #{count} pares distintos; #{pair_description}. Os lados de cada par devem ter uma relação semanticamente correta e fácil de entender. Descrições de imagens são apenas referências textuais para orientar o professor: não gere, procure nem referencie arquivos, URLs, anexos, blobs ou IDs de armazenamento.
+        Gere um candidato educacional para um Jogo da Memória, para revisão do professor. #{difficulty_instructions(difficulty, descriptions: DIFFICULTY_DESCRIPTIONS)}
+        Gere exatamente #{count} pares distintos; #{pair_description}. Os lados de cada par devem ter uma relação semanticamente correta e justificável pelo tema, no nível de dificuldade escolhido. Mantenha cada associação clara e sem múltiplos pares igualmente válidos. Descrições de imagens são apenas referências textuais para orientar o professor: não gere, procure nem referencie arquivos, URLs, anexos, blobs ou IDs de armazenamento.
         Não acrescente explicações, comentários, dados pessoais de alunos ou texto fora do JSON. Este é apenas um rascunho; não salve nem publique o exercício.
       INSTRUCTIONS
     end

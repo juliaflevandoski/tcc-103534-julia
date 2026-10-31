@@ -1,0 +1,61 @@
+pt-BR:
+  date:
+    abbr_day_names: [ dom, seg, ter, qua, qui, sex, sáb ]
+    abbr_month_names: [ ~, jan, fev, mar, abr, mai, jun, jul, ago, set, out, nov, dez ]
+    day_names: [ domingo, segunda-feira, terça-feira, quarta-feira, quinta-feira, sexta-feira, sábado ]
+    month_names: [ ~, janeiro, fevereiro, março, abril, maio, junho, julho, agosto, setembro, outubro, novembro, dezembro ]
+    order:
+      - :day
+      - :month
+      - :year
+    formats:
+      default: "%d/%m/%Y"
+      short: "%d %b"
+      long: "%d de %B de %Y"
+  time:
+    am: manhã
+    pm: tarde
+    formats:
+      default: "%a, %d de %b de %Y, %H:%M:%S %z"
+      short: "%d %b %H:%M"
+      long: "%d de %B de %Y, %H:%M"
+  support:
+    array:
+      words_connector: ", "
+      two_words_connector: " e "
+      last_word_connector: " e "
+  errors:
+    format: "%{attribute} %{message}"
+    messages:
+      accepted: deve ser aceito(a)
+      blank: não pode ficar em branco
+      confirmation: não é igual a %{attribute}
+      empty: não pode ficar vazio
+      equal_to: deve ser igual a %{count}
+      even: deve ser par
+      exclusion: não está disponível
+      greater_than: deve ser maior que %{count}
+      greater_than_or_equal_to: deve ser maior ou igual a %{count}
+      inclusion: não está incluído na lista
+      invalid: não é válido
+      less_than: deve ser menor que %{count}
+      less_than_or_equal_to: deve ser menor ou igual a %{count}
+      model_invalid: "A validação falhou: %{errors}"
+      not_a_number: não é um número
+      not_an_integer: não é um número inteiro
+      password_too_long: é muito longa (máximo de 72 bytes)
+      password_too_short: deve ter pelo menos %{count} caracteres
+      odd: deve ser ímpar
+      other_than: deve ser diferente de %{count}
+      present: deve ficar em branco
+      required: é obrigatório(a)
+      taken: já está em uso
+      too_long:
+        one: "é muito longo (máximo: 1 caractere)"
+        other: "é muito longo (máximo: %{count} caracteres)"
+      too_short:
+        one: "é muito curto (mínimo: 1 caractere)"
+        other: "é muito curto (mínimo: %{count} caracteres)"
+      wrong_length:
+        one: não possui o tamanho esperado (1 caractere)
+        other: não possui o tamanho esperado (%{count} caracteres)

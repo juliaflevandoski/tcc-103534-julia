@@ -9,6 +9,7 @@ module Exercises
     QUESTION_TYPES = %w[multiple_choice true_false short_answer].freeze
     PAIR_TYPES = MemoryGameBuilder::PAIR_TYPES
     MARKER_PATTERN = /\{\{(\d+)\}\}/
+    MULTIPLE_SENTENCES_FORMAT = "multiple_sentences".freeze
 
     def self.call(exercise_type:, object:, attached_image_blob_ids: [], allowed_upload_keys: [])
       new(exercise_type:, object:, attached_image_blob_ids:, allowed_upload_keys:).call
@@ -147,6 +148,20 @@ module Exercises
     end
 
     def validate_ordering
+      unless @object.key?("format")
+        validate_single_ordering
+        return
+      end
+
+      case @object["format"]
+      when MULTIPLE_SENTENCES_FORMAT
+        validate_multiple_sentences_ordering
+      else
+        @errors << "Selecione um formato de ordenação válido."
+      end
+    end
+
+    def validate_single_ordering
       @errors << "Informe a pergunta ou instrução da ordenação." unless nonblank_string?(@object["instructions"])
       item_type = @object["item_type"]
       @errors << "Selecione um tipo de item válido." unless %w[words numbers].include?(item_type)
@@ -179,6 +194,72 @@ module Exercises
       unless correct_order.is_a?(Array) && correct_order.length == items.length && correct_order.all? { |id| id.is_a?(String) } && correct_order.uniq.length == correct_order.length && correct_order.sort == item_ids.sort
         @errors << "A ordem correta deve conter uma vez cada identificador de item existente."
       end
+    end
+
+    def validate_multiple_sentences_ordering
+      @errors << "Informe a pergunta ou instrução da ordenação." unless nonblank_string?(@object["instructions"])
+      if %w[item_type items correct_order].any? { |key| @object.key?(key) }
+        @errors << "O formato de múltiplas frases não pode conter campos da sequência única."
+      end
+      sentences = @object["sentences"]
+      unless sentences.is_a?(Array) && sentences.length >= 2
+        @errors << "Adicione pelo menos duas frases para ordenar."
+        return
+      end
+
+      sentence_ids = []
+      item_ids = []
+      sentences.each_with_index do |sentence, sentence_index|
+        prefix = "Frase #{sentence_index + 1}: "
+        unless sentence.is_a?(Hash)
+          @errors << "#{prefix}informe uma estrutura válida."
+          next
+        end
+
+        sentence_id = sentence["id"]
+        if nonblank_string?(sentence_id)
+          sentence_ids << sentence_id
+        else
+          @errors << "#{prefix}informe um identificador válido."
+        end
+
+        items = sentence["items"]
+        unless items.is_a?(Array) && items.length >= 2
+          @errors << "#{prefix}adicione pelo menos duas palavras para ordenar."
+          next
+        end
+
+        sentence_item_ids = []
+        items.each_with_index do |item, item_index|
+          unless item.is_a?(Hash)
+            @errors << "#{prefix}palavra #{item_index + 1}: informe uma estrutura válida."
+            next
+          end
+
+          item_id = item["id"]
+          if nonblank_string?(item_id)
+            sentence_item_ids << item_id
+            item_ids << item_id
+          else
+            @errors << "#{prefix}palavra #{item_index + 1}: informe um identificador válido."
+          end
+
+          label = item["label"]
+          unless nonblank_string?(label) && !label.match?(/\s/)
+            @errors << "#{prefix}palavra #{item_index + 1}: informe uma única palavra válida."
+          end
+        end
+
+        correct_order = sentence["correct_order"]
+        unless correct_order.is_a?(Array) && correct_order.length == items.length &&
+            correct_order.all? { |id| id.is_a?(String) } && correct_order.uniq.length == correct_order.length &&
+            correct_order.sort == sentence_item_ids.sort
+          @errors << "#{prefix}a ordem correta deve conter uma vez cada identificador de palavra da frase."
+        end
+      end
+
+      @errors << "Os identificadores das frases devem ser únicos." unless sentence_ids.uniq.length == sentence_ids.length
+      @errors << "Os identificadores das palavras devem ser únicos no exercício." unless item_ids.uniq.length == item_ids.length
     end
 
     def validate_crossword

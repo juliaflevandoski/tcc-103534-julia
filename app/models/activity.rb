@@ -8,7 +8,9 @@ class Activity < ApplicationRecord
 
   before_validation :copy_teacher_from_class
 
-  validates :title, presence: true
+  normalizes :title, with: ->(title) { title.strip }
+
+  validates :title, presence: true, length: { maximum: 150 }
   validates :teacher, presence: true
 
   scope :published, -> { where(published: true) }

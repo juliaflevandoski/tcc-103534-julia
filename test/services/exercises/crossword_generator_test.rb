@@ -42,6 +42,29 @@ class Exercises::CrosswordGeneratorTest < ActiveSupport::TestCase
     assert_includes client.calls.first.fetch(:instructions), "o Ludus construirá a grade"
   end
 
+  test "each difficulty level adds crossword-specific vocabulary and clue criteria" do
+    criteria = {
+      "easy" => "termos familiares ao tema e pistas diretas",
+      "medium" => "pistas que exijam interpretar o enunciado ou aplicar conceitos",
+      "hard" => "relações conceituais e inferências mais elaboradas"
+    }
+    prompts = criteria.map do |difficulty, criterion|
+      client = fake_client(data: valid_data)
+      result = build_generator(client).call(topic: "Frutas", difficulty:, word_count: 2)
+      call = client.calls.fetch(0)
+
+      assert result.success?, result.message
+      assert_includes call.fetch(:instructions), criterion
+      assert_includes call.fetch(:instructions), "Aplique o nível selecionado: #{difficulty}."
+      assert_includes call.fetch(:input), "Dificuldade: #{difficulty}"
+      assert_includes call.fetch(:input), "Quantidade exata de palavras: 2"
+      assert_includes call.fetch(:instructions), "não permitir várias respostas igualmente válidas"
+      call.fetch(:instructions)
+    end
+
+    assert_equal 3, prompts.uniq.length
+  end
+
   test "rejects invalid parameters before calling the API" do
     [
       { topic: " ", difficulty: "easy", word_count: 2 },

@@ -16,7 +16,8 @@ class ExerciseAttemptPolicy < ApplicationPolicy
   end
 
   def memory_game_turn?
-    owner? && record.activity_exercise.exercise.memory_game?
+    link = record.activity_exercise
+    owner? && link.active? && link.exercise.active? && link.exercise.memory_game?
   end
 
   def update?

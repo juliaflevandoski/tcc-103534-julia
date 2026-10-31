@@ -3,7 +3,9 @@ class ActivityExercisesController < ApplicationController
 
   def index
     authorize ActivityExercise
-    @activity_exercises = ActivityExercise.active.includes(:activity, :exercise).ordered
+    @activity_exercises = ActivityExercise.active
+      .joins(:activity).where(activities: { teacher_id: current_teacher.id })
+      .includes(:activity, :exercise).ordered
   end
 
   def show; authorize @activity_exercise; end
@@ -15,13 +17,13 @@ class ActivityExercisesController < ApplicationController
   end
 
   def create
+    authorize ActivityExercise
     @activity = current_teacher.activities.active.find(activity_exercise_params[:activity_id])
     exercise = current_teacher.exercises.active.find(activity_exercise_params[:exercise_id])
     @activity_exercise = @activity.activity_exercises.build(activity_exercise_params.except(:activity_id, :position))
     @activity_exercise.exercise = exercise
-    @activity_exercise.position = @activity.activity_exercises.active.maximum(:position).to_i + 1
     authorize @activity_exercise
-    return redirect_to @activity if @activity_exercise.save
+    return redirect_to @activity if ActivityExercises::Append.call(@activity_exercise)
 
     redirect_to @activity, alert: @activity_exercise.errors.full_messages.to_sentence
   rescue ActiveRecord::RecordNotFound
@@ -29,6 +31,7 @@ class ActivityExercisesController < ApplicationController
   end
 
   def reorder
+    authorize Activity, :create?
     activity = current_teacher.activities.active.find(params[:activity_id])
     authorize activity, :update?
     success = ActivityExercises::Reorder.call(activity:, ordered_ids: params[:ordered_ids])
@@ -48,10 +51,13 @@ class ActivityExercisesController < ApplicationController
 
   def update
     authorize @activity_exercise
-    return redirect_to @activity_exercise if @activity_exercise.update(activity_exercise_params)
+    @activity_exercise.assign_attributes(authorized_update_params)
+    return redirect_to @activity_exercise if @activity_exercise.save
 
     load_options
     render :edit, status: :unprocessable_entity
+  rescue ActiveRecord::RecordNotFound
+    redirect_to activities_path, alert: "Aula ou exercício inválido."
   end
 
   def destroy
@@ -70,6 +76,18 @@ class ActivityExercisesController < ApplicationController
   def load_options
     @activities = current_teacher.activities.active.order(:title)
     @exercises = current_teacher.exercises.active.order(:title)
+  end
+
+  # Destinos alterados precisam ser aula e exercício ativos do professor autenticado.
+  def authorized_update_params
+    permitted = activity_exercise_params
+    if permitted.key?(:activity_id) && permitted[:activity_id].to_s != @activity_exercise.activity_id.to_s
+      permitted[:activity_id] = current_teacher.activities.active.find(permitted[:activity_id]).id
+    end
+    if permitted.key?(:exercise_id) && permitted[:exercise_id].to_s != @activity_exercise.exercise_id.to_s
+      permitted[:exercise_id] = current_teacher.exercises.active.find(permitted[:exercise_id]).id
+    end
+    permitted
   end
 
   def activity_exercise_params

@@ -1,5 +1,7 @@
+	<% prefilled_answers = local_assigns[:answers] || {} %>
 	<h1><%= exercise.title %></h1>
 	<p>Complete as lacunas</p>
+	<p><%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if activity_exercise&.persisted? %></p>
 	<%= form_with url: exercise_attempts_path, scope: :exercise_attempt,
 		data: { controller: "required-responses", action: "input->required-responses#update change->required-responses#update submit->required-responses#validate" } do %>
 		<%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
@@ -9,7 +11,7 @@
 				<% marker = /\A\{\{(\d+)\}\}\z/.match(segment) %>
 				<% if marker %>
 					<% blank_number += 1 %>
-					<%= text_field_tag "exercise_attempt[answers][#{marker[1]}]", nil,
+					<%= text_field_tag "exercise_attempt[answers][#{marker[1]}]", prefilled_answers[marker[1]],
 						id: "fill-blank-answer-#{marker[1]}",
 						class: "fill-blank-input",
 						autocomplete: "off",
@@ -22,5 +24,5 @@
 			<% end %>
 		</p>
 		<p data-required-responses-target="status" role="status" aria-live="polite"></p>
-		<%= submit_tag "Enviar respostas", class: "button" %>
+		<%= submit_tag "Enviar respostas", class: "button", data: { turbo_submits_with: "Enviando..." } %>
 	<% end %>

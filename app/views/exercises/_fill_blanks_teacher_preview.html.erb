@@ -1,0 +1,28 @@
+<% object = exercise.object.deep_stringify_keys %>
+<% template = object.fetch("text_template") %>
+<% blanks = object.fetch("blanks") %>
+<% marker_pattern = Exercises::ExerciseContentValidator::MARKER_PATTERN %>
+<% marker_ids = template.scan(marker_pattern).flatten.uniq %>
+<main class="exercise-teacher-preview fill-blanks-teacher-preview">
+	<h1><%= exercise.title %></h1>
+	<p>Complete as lacunas</p>
+	<p class="fill-blanks-text">
+		<% template.split(/(\{\{\d+\}\})/).each do |segment| %>
+			<% marker = /\A\{\{(\d+)\}\}\z/.match(segment) %>
+			<% if marker %>
+				<span class="fill-blank-input" aria-label="Lacuna <%= marker[1] %>">________</span>
+			<% else %>
+				<%= segment %>
+			<% end %>
+		<% end %>
+	</p>
+	<h2>Gabarito</h2>
+	<ol class="fill-blanks-feedback">
+		<% marker_ids.each_with_index do |marker_id, index| %>
+			<li class="attempt-question-card">
+				<p><strong>Lacuna <%= index + 1 %></strong></p>
+				<p>Resposta esperada: <%= blanks.fetch(marker_id) %></p>
+			</li>
+		<% end %>
+	</ol>
+</main>

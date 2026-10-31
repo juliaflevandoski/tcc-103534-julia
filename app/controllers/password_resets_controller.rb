@@ -23,19 +23,23 @@ class PasswordResetsController < ApplicationController
     @role = normalized_role(params[:role])
     @token = params[:token]
     @user = find_user
-    password_attributes = params.require(:user).permit(:password, :password_confirmation)
-    if @user
-      @user.password = password_attributes["password"]
-      @user.password_confirmation = password_attributes["password_confirmation"]
-      @user.password_reset_token = nil
-      @user.password_reset_sent_at = nil
+    return redirect_to login_path(role: @role), alert: "Não foi possível redefinir a senha." unless @user
+
+    password_attributes = params.fetch(:user, {}).permit(:password, :password_confirmation)
+    password = password_attributes[:password]
+    confirmation = password_attributes[:password_confirmation]
+
+    # has_secure_password ignora senha vazia e confirmação ausente, então validamos aqui.
+    if password.blank?
+      @user.errors.add(:base, "Informe a nova senha.")
+    elsif confirmation != password
+      @user.errors.add(:base, "A confirmação da senha deve ser igual à nova senha.")
+    else
+      @user.assign_attributes(password:, password_confirmation: confirmation, password_reset_token: nil, password_reset_sent_at: nil)
+      return redirect_to login_path(role: @role), notice: "Senha redefinida com sucesso." if @user.save
     end
 
-    if @user&.save
-      redirect_to login_path(role: @role), notice: "Senha redefinida com sucesso."
-    else
-      redirect_to login_path(role: @role), alert: "Não foi possível redefinir a senha."
-    end
+    render :edit, status: :unprocessable_entity
   end
 
   private

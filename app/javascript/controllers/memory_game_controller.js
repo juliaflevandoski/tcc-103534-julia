@@ -1,5 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
+const UNEXPECTED_RESPONSE_MESSAGE = "Não foi possível registrar a jogada. Recarregue a página e tente novamente."
+
 export default class extends Controller {
   static targets = [
     "card", "status", "attempts", "matches", "errors", "score", "completion",
@@ -80,9 +82,12 @@ export default class extends Controller {
         "X-CSRF-Token": document.querySelector("meta[name='csrf-token']").content
       },
       body: JSON.stringify({ operation, card_id: cardId })
-    })
-    const payload = await response.json()
+    }).catch(() => null)
+    // Redirecionamentos seguidos pelo fetch (login, acesso negado) e respostas que não são JSON não são jogadas válidas.
+    const payload = response && !response.redirected ? await response.json().catch(() => null) : null
+    if (!payload) throw new Error(UNEXPECTED_RESPONSE_MESSAGE)
     if (!response.ok) throw new Error(payload.errors?.[0]?.message || "Jogada inválida.")
+    if (!payload.data) throw new Error(UNEXPECTED_RESPONSE_MESSAGE)
     return payload.data
   }
 

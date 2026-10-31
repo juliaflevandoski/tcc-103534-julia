@@ -75,6 +75,9 @@ class FillBlanksAiGenerationTest < ActionDispatch::IntegrationTest
     assert_equal({ "1" => "100", "2" => "0" }, draft.fetch("blanks"))
     assert Exercises::ExerciseContentValidator.call(exercise_type: "fill_blanks", object: draft).success?
     assert_equal 1, @client.calls.length
+    assert_includes @client.calls.first.fetch(:input), "Estados da água"
+    assert_includes @client.calls.first.fetch(:input), "Dificuldade: medium"
+    assert_includes @client.calls.first.fetch(:input), "Quantidade exata de lacunas: 2"
 
     draft["blanks"]["1"] = "cem"
     assert_difference("Exercise.count") do

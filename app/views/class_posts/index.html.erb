@@ -1,0 +1,55 @@
+<main>
+	<h1>Mural — <%= @school_class.name %></h1>
+	<p><%= link_to "Voltar à turma", school_class_path(@school_class), class: "button" %></p>
+
+	<% if policy(@new_post).create? %>
+		<h2>Nova publicação</h2>
+		<%= render "shared/errors", record: @new_post %>
+		<%= form_with model: @new_post, url: school_class_class_posts_path(@school_class) do |form| %>
+			<%= form.label :body, "Texto" %>
+			<%= form.text_area :body, required: true, maxlength: ClassPost::MAX_BODY_LENGTH, rows: 4 %>
+			<div class="actions"><%= form.submit "Publicar" %></div>
+		<% end %>
+	<% end %>
+
+	<% if @posts.empty? %>
+		<p>Nenhuma publicação no mural ainda.</p>
+	<% end %>
+
+	<% @posts.each do |post| %>
+		<article id="class_post_<%= post.id %>">
+			<h3><%= post.teacher.name %> <small><%= l(post.created_at, format: :short) %></small></h3>
+			<p style="white-space: pre-wrap"><%= post.body %></p>
+			<% if policy(post).update? %>
+				<%= link_to "Editar", edit_school_class_class_post_path(@school_class, post), class: "button" %>
+				<%= button_to "Excluir", school_class_class_post_path(@school_class, post), method: :delete, class: "button", form: { data: { turbo_confirm: "Excluir esta publicação?" } } %>
+			<% end %>
+
+			<h4>Comentários</h4>
+			<% @comments_by_post.fetch(post.id, []).each do |comment| %>
+				<div id="class_post_comment_<%= comment.id %>">
+					<p><strong><%= comment.author.name %></strong> <small><%= l(comment.created_at, format: :short) %></small></p>
+					<p style="white-space: pre-wrap"><%= comment.body %></p>
+					<% comment_policy = policy(comment) %>
+					<% if comment_policy.update? %>
+						<%= link_to "Editar", edit_school_class_class_post_comment_path(@school_class, post, comment), class: "button" %>
+					<% end %>
+					<% if comment_policy.destroy? %>
+						<%= button_to "Excluir", school_class_class_post_comment_path(@school_class, post, comment), method: :delete, class: "button", form: { data: { turbo_confirm: "Excluir este comentário?" } } %>
+					<% end %>
+				</div>
+			<% end %>
+
+			<% new_comment = @invalid_comment if @invalid_comment&.class_post_id == post.id %>
+			<% new_comment ||= post.comments.build %>
+			<% if policy(new_comment).create? %>
+				<%= render "shared/errors", record: new_comment %>
+				<%= form_with model: new_comment, url: school_class_class_post_comments_path(@school_class, post) do |form| %>
+					<%= form.label :body, "Comentar" %>
+					<%= form.text_area :body, required: true, maxlength: ClassPostComment::MAX_BODY_LENGTH, rows: 2, id: "comment_body_#{post.id}" %>
+					<div class="actions"><%= form.submit "Comentar" %></div>
+				<% end %>
+			<% end %>
+		</article>
+	<% end %>
+</main>

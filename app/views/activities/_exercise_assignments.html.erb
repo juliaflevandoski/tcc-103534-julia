@@ -4,15 +4,22 @@
     <%= form_with model: activity_exercise, url: activity_exercises_path do |form| %>
       <%= form.hidden_field :activity_id, value: activity.id %>
       <%= form.label :exercise_id, "Exercício" %>
-      <%= form.collection_select :exercise_id, available_exercises, :id, :title, include_blank: true %>
+      <%= form.collection_select :exercise_id, available_exercises, :id, :title, { include_blank: true }, { required: true } %>
       <%= form.label :points, "Pontos" %>
-      <%= form.number_field :points, min: 0 %>
+      <%= form.number_field :points, min: 0, max: ActivityExercise::MAX_POINTS, step: 1, required: true %>
       <div class="actions"><%= form.submit "Adicionar exercício", class: "button" %></div>
     <% end %>
-    <p><%= link_to "Criar exercício", new_exercise_path, class: "button" %></p>
+    <p><%= link_to "Criar exercício", new_exercise_path(activity_id: activity.id), class: "button" %></p>
   <% end %>
 
   <h2>Exercícios na aula</h2>
+  <% if activity_exercises.empty? %>
+    <% if current_teacher %>
+      <p class="empty-lesson-notice">Esta aula não possui exercícios ativos. Adicione ou ative exercícios para que os alunos possam concluí-la.</p>
+    <% else %>
+      <p class="empty-lesson-notice">Esta aula ainda não possui exercícios disponíveis.</p>
+    <% end %>
+  <% end %>
   <% if current_teacher %>
     <table class="exercise-table" data-controller="sortable-exercises" data-sortable-exercises-url-value="<%= reorder_activity_exercises_path(activity) %>">
   <% else %>
@@ -31,9 +38,9 @@
         <tr>
       <% end %>
         <td><% if current_teacher %><i class="fa-solid fa-grip-vertical" aria-hidden="true" title="Arrastar para reordenar"></i><% end %> <span data-position><%= activity_exercise.position %></span></td>
-        <td><%= link_to activity_exercise.exercise.title, exercise_path(activity_exercise.exercise, activity_exercise_id: activity_exercise.id) %></td>
+        <td><%= link_to activity_exercise.exercise.title, exercise_path(activity_exercise.exercise, **{ activity_exercise_id: activity_exercise.id, activity_id: (activity.id if current_teacher) }.compact) %></td>
         <td><%= activity_exercise.points %></td>
-        <% if current_teacher %><td><%= button_to "Remover", activity_exercise_path(activity_exercise), method: :delete, class: "button danger" %></td><% end %>
+        <% if current_teacher %><td><%= button_to "Remover", activity_exercise_path(activity_exercise), method: :delete, class: "button danger", form: { data: { turbo_confirm: "Remover este exercício da aula? O exercício continuará disponível na sua lista." } } %></td><% end %>
       </tr>
     <% end %>
     </tbody>

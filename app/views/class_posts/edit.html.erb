@@ -1,0 +1,12 @@
+<main>
+	<h1>Editar publicação</h1>
+	<%= render "shared/errors", record: @class_post %>
+	<%= form_with model: @class_post, url: school_class_class_post_path(@school_class, @class_post) do |form| %>
+		<%= form.label :body, "Texto" %>
+		<%= form.text_area :body, required: true, maxlength: ClassPost::MAX_BODY_LENGTH, rows: 4 %>
+		<div class="actions">
+			<%= form.submit "Salvar" %>
+			<%= link_to "Cancelar", school_class_class_posts_path(@school_class), class: "button" %>
+		</div>
+	<% end %>
+</main>

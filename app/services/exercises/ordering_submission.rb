@@ -2,14 +2,17 @@ module Exercises
   class OrderingSubmission
     Result = Struct.new(:attempt, :xp_awarded, keyword_init: true)
 
-    def self.call(activity_exercise:, student:, ordered_ids:)
+    def self.call(activity_exercise:, student:, ordered_ids: nil, sentences: nil)
       activity_exercise.exercise.validate!
-      AttemptValidity.ensure_response!(exercise: activity_exercise.exercise, answer: { "ordered_ids" => ordered_ids })
-      grade = OrderingGrader.call(
-        exercise: activity_exercise.exercise.object,
-        ordered_ids:,
-        points: activity_exercise.points
-      )
+      object = activity_exercise.exercise.object.deep_stringify_keys
+      multiple_sentences = object["format"] == ExerciseContentValidator::MULTIPLE_SENTENCES_FORMAT
+      answer = multiple_sentences ? { "sentences" => sentences } : { "ordered_ids" => ordered_ids }
+      AttemptValidity.ensure_response!(exercise: activity_exercise.exercise, answer:)
+      grade = if multiple_sentences
+        OrderingGrader.call(exercise: object, sentences:, points: activity_exercise.points)
+      else
+        OrderingGrader.call(exercise: object, ordered_ids:, points: activity_exercise.points)
+      end
       attempt = ExerciseAttempt.new(
         student:,
         activity_exercise:,

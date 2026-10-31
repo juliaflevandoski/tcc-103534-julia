@@ -1,0 +1,28 @@
+<% object = exercise.object.deep_stringify_keys %>
+<main class="exercise-teacher-preview ordering-teacher-preview">
+	<h1><%= exercise.title %></h1>
+	<p><%= object.fetch("instructions") %></p>
+	<% if object["format"] == "multiple_sentences" %>
+		<h2>Frases na ordem correta</h2>
+		<% object.fetch("sentences").each_with_index do |sentence, index| %>
+			<% sentence_items_by_id = sentence.fetch("items").index_by { |item| item.fetch("id") } %>
+			<section class="ordering-sentence-preview">
+				<h3>Frase <%= index + 1 %></h3>
+				<ol class="ordering-feedback-list">
+					<% sentence.fetch("correct_order").each do |item_id| %>
+						<li class="attempt-question-card"><%= sentence_items_by_id.fetch(item_id).fetch("label") %></li>
+					<% end %>
+				</ol>
+			</section>
+		<% end %>
+	<% else %>
+		<% items_by_id = object.fetch("items").index_by { |item| item.fetch("id") } %>
+		<p>Tipo dos itens: <%= object.fetch("item_type") == "numbers" ? "Números inteiros" : "Palavras ou elementos" %></p>
+		<h2>Sequência correta</h2>
+		<ol class="ordering-feedback-list">
+			<% object.fetch("correct_order").each do |item_id| %>
+				<li class="attempt-question-card"><%= items_by_id.fetch(item_id).fetch("label") %></li>
+			<% end %>
+		</ol>
+	<% end %>
+</main>

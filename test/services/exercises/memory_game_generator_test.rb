@@ -41,6 +41,34 @@ class Exercises::MemoryGameGeneratorTest < ActiveSupport::TestCase
     assert_equal 1, client.calls.length
   end
 
+  test "each difficulty level adds memory game-specific relation criteria for existing pair types" do
+    difficulty_criteria = {
+      "easy" => "relações diretas e facilmente reconhecíveis",
+      "medium" => "compreender seus significados ou usos em um contexto familiar",
+      "hard" => "relações conceituais mais elaboradas"
+    }
+    pair_types = {
+      "word_word" => valid_data.fetch("pairs"),
+      "word_image" => [ { "word" => "DOG", "image_description" => "A dog" }, { "word" => "CAT", "image_description" => "A cat" } ],
+      "image_image" => [ { "left_image_description" => "A dog", "right_image_description" => "A bone" }, { "left_image_description" => "A cat", "right_image_description" => "A ball" } ]
+    }
+
+    difficulty_criteria.each do |difficulty, criterion|
+      pair_types.each do |pair_type, pairs|
+        client = fake_client(data: { "instructions" => "Combine as relações.", "pairs" => pairs })
+        result = build_generator(client).call(topic: "Animais e seus elementos", difficulty:, pair_count: 2, pair_type:)
+        call = client.calls.fetch(0)
+
+        assert result.success?, "#{difficulty}/#{pair_type}: #{result.message}"
+        assert_includes call.fetch(:instructions), criterion
+        assert_includes call.fetch(:instructions), "Aplique o nível selecionado: #{difficulty}."
+        assert_includes call.fetch(:input), "Dificuldade: #{difficulty}"
+        assert_includes call.fetch(:input), "Tipo de associação: #{pair_type}"
+        assert_includes call.fetch(:instructions), "não gere, procure nem referencie arquivos"
+      end
+    end
+  end
+
   test "returns text-only image placeholders without inventing image references" do
     [
       [ "word_image", [ { "word" => "DOG", "image_description" => "A small brown dog" }, { "word" => "CAT", "image_description" => "A gray cat" } ] ],

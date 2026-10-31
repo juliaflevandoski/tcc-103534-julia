@@ -44,8 +44,8 @@ class BlankExerciseSubmissionsTest < ActionDispatch::IntegrationTest
             exercise_attempt: { activity_exercise_id: activity_exercise.id }.merge(payload)
           }
         end
-        assert_redirected_to exercise_url(activity_exercise.exercise, activity_exercise_id: activity_exercise.id)
-        assert_equal "Preencha todas as respostas obrigatórias antes de enviar a atividade.", flash[:alert]
+        assert_response :unprocessable_entity
+        assert_includes response.body, "Preencha todas as respostas obrigatórias antes de enviar a atividade."
       end
     end
 

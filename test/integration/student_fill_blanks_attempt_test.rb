@@ -79,8 +79,9 @@ class StudentFillBlanksAttemptTest < ActionDispatch::IntegrationTest
       }
     end
 
-    assert_redirected_to exercise_url(exercise, activity_exercise_id: activity_exercise.id)
-    assert_equal "Preencha todas as respostas obrigatórias antes de enviar a atividade.", flash[:alert]
+    assert_response :unprocessable_entity
+
+    assert_includes response.body, "Preencha todas as respostas obrigatórias antes de enviar a atividade."
     assert_not StudentStat.exists?(student_id: student.id)
     assert_nil ActivityResults.official_attempt(activity_exercise:, student:)
   end
@@ -102,10 +103,12 @@ class StudentFillBlanksAttemptTest < ActionDispatch::IntegrationTest
   private
 
   def create_student_fill_blanks(points:)
-    teacher = Teacher.create!(name: "Professora Lacunas", username: "fillteacher", email: "fillteacher@example.com", password: "secret123")
+    teacher_id = "fillteacher-#{SecureRandom.hex(6)}"
+    teacher = Teacher.create!(name: "Professora Lacunas", username: teacher_id, email: "#{teacher_id}@example.com", password: "secret123")
     school_class = teacher.school_classes.create!(name: "Geografia", active: true)
     activity = school_class.activities.create!(title: "Complete as lacunas", published: true)
-    student = Student.create!(name: "Aluno Lacunas", username: "fillstudent", email: "fillstudent@example.com", password: "secret123")
+    student_id = "fillstudent-#{SecureRandom.hex(6)}"
+    student = Student.create!(name: "Aluno Lacunas", username: student_id, email: "#{student_id}@example.com", password: "secret123")
     school_class.class_students.create!(student:, active: true)
     exercise = teacher.exercises.create!(
       title: "Capitais",

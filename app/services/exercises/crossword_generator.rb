@@ -3,16 +3,29 @@ module Exercises
     MIN_WORDS = 2
     MAX_WORDS = 20
     SCHEMA_NAME = "ludus_crossword_draft"
+    DIFFICULTY_DESCRIPTIONS = {
+      "easy" => "Fácil: escolha termos familiares ao tema e pistas diretas que identifiquem claramente uma única resposta.",
+      "medium" => "Médio: use pistas que exijam interpretar o enunciado ou aplicar conceitos relacionados ao tema.",
+      "hard" => "Difícil: use relações conceituais e inferências mais elaboradas, mas mantenha cada pista específica, clara e sem outras respostas igualmente válidas."
+    }.freeze
 
-    def call(topic: nil, difficulty: nil, word_count: nil)
+    def call(topic: nil, difficulty: nil, word_count: nil, refinement: nil, previous_draft: nil)
+      error = refinement_error(refinement:, previous_draft:)
+      return failure(:invalid_input, error) if error
+
       count = parse_count(word_count, minimum: MIN_WORDS, maximum: MAX_WORDS)
       return failure(:invalid_input, "Informe tema, dificuldade e uma quantidade de 2 a 20 palavras.") unless valid_topic_and_difficulty?(topic, difficulty) && count
+
+      reference = previous_reference_for("crossword", previous_draft)
+      return reference if reference.is_a?(Result)
 
       data = request_json(
         instructions: instructions_for(difficulty, count),
         input: input_for(topic, difficulty, count),
         schema_name: SCHEMA_NAME,
-        schema: schema_for(count)
+        schema: schema_for(count),
+        refinement:,
+        previous_reference: reference
       )
       return data if data.is_a?(Result)
       return invalid_response unless data.keys == [ "words" ]
@@ -39,8 +52,8 @@ module Exercises
 
     def instructions_for(difficulty, count)
       <<~INSTRUCTIONS.strip
-        Sugira exatamente #{count} palavras e pistas para uma palavra cruzada educacional sobre o tema, para revisão do professor. #{difficulty_instructions(difficulty)}
-        Cada resposta deve conter apenas letras, sem espaços ou pontuação, ter de 2 a #{CrosswordBuilder::MAX_GRID_SIZE} letras, e ser distinta após normalização de acentos e caixa. Cada pista deve ser clara, suficiente e corresponder à resposta. Não inclua grade, posições ou IDs: o Ludus construirá a grade.
+        Sugira exatamente #{count} palavras e pistas para uma palavra cruzada educacional sobre o tema, para revisão do professor. #{difficulty_instructions(difficulty, descriptions: DIFFICULTY_DESCRIPTIONS)}
+        Cada resposta deve conter apenas letras, sem espaços ou pontuação, ter de 2 a #{CrosswordBuilder::MAX_GRID_SIZE} letras, e ser distinta após normalização de acentos e caixa. Cada pista deve ser suficiente, corresponder à resposta e não permitir várias respostas igualmente válidas. Não inclua grade, posições ou IDs: o Ludus construirá a grade.
         Não acrescente explicações, comentários, dados pessoais de alunos ou texto fora do JSON. Este é apenas um candidato; não salve nem publique o exercício.
       INSTRUCTIONS
     end

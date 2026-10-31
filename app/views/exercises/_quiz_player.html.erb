@@ -1,5 +1,7 @@
+	<% prefilled_answers = local_assigns[:answers] || {} %>
 	<h1><%= exercise.title %></h1>
 	<p>Quiz</p>
+	<p><%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if activity_exercise&.persisted? %></p>
 	<%= form_with url: exercise_attempts_path, scope: :exercise_attempt,
 		data: { controller: "required-responses", action: "input->required-responses#update change->required-responses#update submit->required-responses#validate" } do %>
 		<%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
@@ -13,7 +15,7 @@
 							<% question.fetch("options").each_with_index do |option, option_index| %>
 								<% option_id = "quiz-question-#{question_index}-option-#{option_index}" %>
 								<div class="quiz-answer-option">
-									<%= radio_button_tag "exercise_attempt[answers][#{question_index}]", option.fetch("id"), false, id: option_id, required: true,
+									<%= radio_button_tag "exercise_attempt[answers][#{question_index}]", option.fetch("id"), prefilled_answers[question_index.to_s] == option.fetch("id"), id: option_id, required: true,
 										data: { required_responses_target: "field", response_group: "question-#{question_index}", response_label: "questão #{question_index + 1}" } %>
 									<%= label_tag option_id, option.fetch("text") %>
 								</div>
@@ -22,13 +24,13 @@
 							<% [["true", "Verdadeiro"], ["false", "Falso"]].each do |value, label| %>
 								<% option_id = "quiz-question-#{question_index}-#{value}" %>
 								<div class="quiz-answer-option">
-									<%= radio_button_tag "exercise_attempt[answers][#{question_index}]", value, false, id: option_id, required: true,
+									<%= radio_button_tag "exercise_attempt[answers][#{question_index}]", value, prefilled_answers[question_index.to_s] == value, id: option_id, required: true,
 										data: { required_responses_target: "field", response_group: "question-#{question_index}", response_label: "questão #{question_index + 1}" } %>
 									<%= label_tag option_id, label %>
 								</div>
 							<% end %>
 						<% when "short_answer" %>
-							<%= text_field_tag "exercise_attempt[answers][#{question_index}]", nil,
+							<%= text_field_tag "exercise_attempt[answers][#{question_index}]", prefilled_answers[question_index.to_s],
 								id: "quiz-question-#{question_index}-answer", autocomplete: "off", required: true,
 								data: { required_responses_target: "field", response_group: "question-#{question_index}", response_label: "questão #{question_index + 1}" } %>
 						<% end %>
@@ -37,5 +39,5 @@
 			<% end %>
 		</ol>
 		<p data-required-responses-target="status" role="status" aria-live="polite"></p>
-		<%= submit_tag "Enviar respostas", class: "button" %>
+		<%= submit_tag "Enviar respostas", class: "button", data: { turbo_submits_with: "Enviando..." } %>
 	<% end %>

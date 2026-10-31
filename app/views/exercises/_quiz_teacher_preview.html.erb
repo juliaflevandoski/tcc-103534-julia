@@ -1,0 +1,30 @@
+<% question_type_labels = { "multiple_choice" => "Múltipla escolha", "true_false" => "Verdadeiro ou falso", "short_answer" => "Resposta curta" } %>
+<main class="exercise-teacher-preview quiz-teacher-preview">
+	<h1><%= exercise.title %></h1>
+	<p>Quiz</p>
+	<ol class="quiz-questions">
+		<% exercise.object.deep_stringify_keys.fetch("questions").each_with_index do |question, index| %>
+			<li>
+				<fieldset class="quiz-question">
+					<legend>Questão <%= index + 1 %> · <%= question_type_labels.fetch(question.fetch("question_type")) %></legend>
+					<p><%= question.fetch("statement") %></p>
+					<% if question["question_type"] == "multiple_choice" %>
+						<ul>
+							<% correct_ids = Array(question["correct_option_ids"]) %>
+							<% question.fetch("options").each do |option| %>
+								<li>
+									<%= option.fetch("text") %>
+										<% if correct_ids.include?(option.fetch("id")) %><strong class="quiz-correct-badge">Correta</strong><% end %>
+								</li>
+							<% end %>
+						</ul>
+					<% elsif question["question_type"] == "true_false" %>
+						<p><strong>Resposta correta:</strong> <%= question.fetch("correct_option_ids").first == "true" ? "Verdadeiro" : "Falso" %></p>
+					<% elsif question["question_type"] == "short_answer" %>
+						<p><strong>Resposta esperada:</strong> <%= question.fetch("correct_answer") %></p>
+					<% end %>
+				</fieldset>
+			</li>
+		<% end %>
+	</ol>
+</main>

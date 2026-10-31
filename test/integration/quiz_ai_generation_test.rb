@@ -70,8 +70,11 @@ class QuizAiGenerationTest < ActionDispatch::IntegrationTest
     generated_quiz = response.parsed_body.dig("data", "quiz")
     assert_equal @quiz, generated_quiz
     assert_equal 1, @generator.calls.length
-    assert_equal "Biologia", @generator.calls.first.fetch(:topic)
-    assert_equal [ "multiple_choice", "true_false", "short_answer" ], @generator.calls.first.fetch(:question_types)
+    generation_call = @generator.calls.first
+    assert_equal "Biologia", generation_call.fetch(:topic)
+    assert_equal "medium", generation_call.fetch(:difficulty)
+    assert_equal "4", generation_call.fetch(:question_count).to_s
+    assert_equal [ "multiple_choice", "true_false", "short_answer" ], generation_call.fetch(:question_types)
 
     generated_quiz["questions"][0]["statement"] = "Enunciado revisado pelo professor."
     generated_quiz["questions"].delete_at(1)
