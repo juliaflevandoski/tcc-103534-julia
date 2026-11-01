@@ -1,1 +1,37 @@
-<main><div class="toolbar"><h1>Exercícios</h1><%= link_to "Novo exercício", new_exercise_path, class: "button" %></div><table><thead><tr><th>Título</th><th>Tipo</th><th>Professor</th><th></th></tr></thead><tbody><% @exercises.each do |exercise| %><tr><td><%= exercise.title %></td><td><%= exercise.exercise_type %></td><td><%= exercise.teacher.name %></td><td><%= link_to "Ver", exercise %> | <%= link_to "Editar", edit_exercise_path(exercise) %> | <%= button_to "Desativar", exercise, method: :delete, class: "button danger", form: { data: { turbo_confirm: "Desativar este exercício? Ele deixará de aparecer nas aulas." } } %></td></tr><% end %></tbody></table></main>
+<main class="exercises-index">
+	<header class="exercises-index-header">
+		<h1>Exercícios</h1>
+		<%= link_to "Novo exercício", new_exercise_path, class: "button exercises-index-new-button" %>
+	</header>
+	<% if @exercises.any? %>
+		<ul class="exercises-index-grid" aria-label="Exercícios">
+			<% @exercises.each do |exercise| %>
+				<% type_label = {
+					"quiz" => "Quiz",
+					"fill_blanks" => "Lacunas",
+					"ordering" => "Ordenação",
+					"crossword" => "Cruzadinha",
+					"memory_game" => "Memória"
+				}.fetch(exercise.exercise_type) %>
+				<li>
+					<article class="exercises-index-card">
+						<div class="exercises-index-card-details">
+							<h2 class="exercises-index-card-title"><%= exercise.title %></h2>
+							<p class="exercises-index-type"><%= type_label %></p>
+							<p class="exercises-index-teacher"><%= exercise.teacher.name %></p>
+						</div>
+						<div class="exercises-index-actions">
+							<%= link_to "Ver", exercise, class: "button exercises-index-view-button" %>
+							<%= link_to "Editar", edit_exercise_path(exercise), class: "button exercises-index-edit-button" %>
+							<%= button_to exercise, method: :delete, class: "button exercises-index-disable-button", aria: { label: "Desativar exercício" }, title: "Desativar exercício", form: { data: { turbo_confirm: "Desativar este exercício? Ele deixará de aparecer nas aulas." } } do %>
+								<i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+							<% end %>
+						</div>
+					</article>
+				</li>
+			<% end %>
+		</ul>
+	<% else %>
+		<p class="exercises-index-empty">Ainda não há exercícios ativos.</p>
+	<% end %>
+</main>

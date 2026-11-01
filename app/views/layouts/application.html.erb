@@ -24,21 +24,78 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body>
-    <header class="site-header">
-      <%= link_to "Ludus", root_path, class: "brand" %>
-      <% if authenticated? %>
-        <nav>
-          <%= link_to "Turmas", school_classes_path %>
-          <%= link_to "Aulas", activities_path %>
-          <%= link_to "Resultados", exercise_attempts_path %>
-          <% if current_teacher %><%= link_to "Exercícios", exercises_path %><% end %>
-        </nav>
-        <%= button_to "Sair", logout_path, method: :delete, class: "button" %>
+  <% internal_navigation = authenticated? && !%w[sessions registrations password_resets].include?(controller_name) %>
+  <body class="<%= class_names('login-body': controller_name == 'sessions' && action_name == 'new', 'internal-app-body': internal_navigation) %>">
+    <% if internal_navigation %>
+      <% active_navigation = case controller_name
+      when "school_classes", "class_students", "class_posts", "class_post_comments" then :classes
+      when "activities", "activity_exercises" then :activities
+      when "exercises" then current_teacher ? :exercises : :classes
+      when "exercise_attempts", "student_stats" then :results
+      end %>
+      <div class="internal-app-shell" data-controller="sidebar-navigation">
+        <aside id="internal-sidebar" class="internal-sidebar" data-sidebar-navigation-target="sidebar" aria-label="Navegação principal">
+          <%= link_to root_path, class: "internal-brand" do %>
+            <span class="internal-brand-mark" aria-hidden="true">L</span>
+            <span>Ludus</span>
+          <% end %>
+          <p class="internal-profile-label"><%= current_teacher ? "Área do professor" : "Área do aluno" %></p>
+          <nav class="internal-navigation" aria-label="Navegação">
+            <% classes_active = active_navigation == :classes %>
+            <%= link_to school_classes_path, class: "internal-navigation-link#{' is-active' if classes_active}", aria: { current: ("page" if classes_active) }, data: { action: "click->sidebar-navigation#closeAfterNavigate" } do %>
+              <i class="fa-solid fa-chalkboard-user" aria-hidden="true"></i><span><%= current_teacher ? "Turmas" : "Minhas turmas" %></span>
+            <% end %>
+            <% if current_teacher %>
+              <% activities_active = active_navigation == :activities %>
+              <%= link_to activities_path, class: "internal-navigation-link#{' is-active' if activities_active}", aria: { current: ("page" if activities_active) }, data: { action: "click->sidebar-navigation#closeAfterNavigate" } do %>
+                <i class="fa-solid fa-book-open" aria-hidden="true"></i><span>Aulas</span>
+              <% end %>
+              <% exercises_active = active_navigation == :exercises %>
+              <%= link_to exercises_path, class: "internal-navigation-link#{' is-active' if exercises_active}", aria: { current: ("page" if exercises_active) }, data: { action: "click->sidebar-navigation#closeAfterNavigate" } do %>
+                <i class="fa-solid fa-puzzle-piece" aria-hidden="true"></i><span>Exercícios</span>
+              <% end %>
+            <% end %>
+            <% results_active = active_navigation == :results %>
+            <%= link_to exercise_attempts_path, class: "internal-navigation-link#{' is-active' if results_active}", aria: { current: ("page" if results_active) }, data: { action: "click->sidebar-navigation#closeAfterNavigate" } do %>
+              <i class="fa-solid fa-chart-column" aria-hidden="true"></i><span><%= current_teacher ? "Resultados" : "Meus resultados" %></span>
+            <% end %>
+          </nav>
+          <div class="internal-sidebar-footer">
+            <%= button_to logout_path, method: :delete, class: "internal-logout-button" do %>
+              <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i><span>Sair</span>
+            <% end %>
+          </div>
+        </aside>
+        <button type="button" class="internal-sidebar-backdrop" data-sidebar-navigation-target="backdrop" data-action="click->sidebar-navigation#close" aria-label="Fechar menu" hidden></button>
+        <div class="internal-workspace">
+          <div class="internal-mobile-header">
+            <button type="button" class="internal-menu-toggle" data-sidebar-navigation-target="toggle" data-action="click->sidebar-navigation#toggle" aria-controls="internal-sidebar" aria-expanded="false" aria-label="Abrir menu de navegação">
+              <i class="fa-solid fa-bars" aria-hidden="true"></i><span>Menu</span>
+            </button>
+          </div>
+          <% if notice %><p class="notice"><%= notice %></p><% end %>
+          <% if alert %><p class="alert"><%= alert %></p><% end %>
+          <%= yield %>
+        </div>
+      </div>
+    <% else %>
+      <% unless controller_name == "sessions" && action_name == "new" %>
+        <header class="site-header">
+          <%= link_to "Ludus", root_path, class: "brand" %>
+          <% if authenticated? %>
+            <nav>
+              <%= link_to "Turmas", school_classes_path %>
+              <%= link_to "Aulas", activities_path %>
+              <%= link_to "Resultados", exercise_attempts_path %>
+              <% if current_teacher %><%= link_to "Exercícios", exercises_path %><% end %>
+            </nav>
+            <%= button_to "Sair", logout_path, method: :delete, class: "button" %>
+          <% end %>
+        </header>
       <% end %>
-    </header>
-    <% if notice %><p class="notice"><%= notice %></p><% end %>
-    <% if alert %><p class="alert"><%= alert %></p><% end %>
-    <%= yield %>
+      <% if notice %><p class="notice"><%= notice %></p><% end %>
+      <% if alert %><p class="alert"><%= alert %></p><% end %>
+      <%= yield %>
+    <% end %>
   </body>
 </html>

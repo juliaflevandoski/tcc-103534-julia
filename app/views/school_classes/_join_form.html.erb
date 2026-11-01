@@ -1,4 +1,5 @@
 <%= form_with url: join_school_classes_path, method: :post do |form| %>
+  <%= form.label :access_code, "Código de acesso" %>
   <%= form.text_field :access_code, placeholder: "Código da turma", required: true %>
   <%= form.submit "Entrar na turma", class: "button" %>
 <% end %>

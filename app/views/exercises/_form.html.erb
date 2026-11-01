@@ -2,18 +2,20 @@
 <% memory_image_urls = exercise.memory_images_attachments.to_h { |attachment| [attachment.blob_id.to_s, rails_blob_path(attachment.blob, only_path: true)] } %>
 <%= form_with model: exercise, multipart: true, data: { controller: "exercise-form unsaved-changes", action: "submit->exercise-form#prepareObject turbo:submit-start->unsaved-changes#submitStart turbo:submit-end->unsaved-changes#submitEnd", unsaved_changes_start_dirty_value: exercise.errors.any?, exercise_form_crossword_preview_url_value: crossword_preview_exercises_path, exercise_form_quiz_generate_url_value: generate_quiz_exercises_path, exercise_form_fill_blanks_generate_url_value: generate_fill_blanks_exercises_path, exercise_form_ordering_generate_url_value: generate_ordering_exercises_path, exercise_form_crossword_generate_url_value: generate_crossword_exercises_path, exercise_form_memory_game_generate_url_value: generate_memory_game_exercises_path, exercise_form_memory_game_image_urls_value: memory_image_urls.to_json } do |form| %>
 	<%= hidden_field_tag :activity_id, @source_activity.id if @source_activity %>
-	<%= form.label :title, "Título" %>
-	<%= form.text_field :title, required: true, maxlength: 150, data: { exercise_form_target: "title" } %>
+	<div class="exercise-form-basics">
+		<%= form.label :title, "Título" %>
+		<%= form.text_field :title, required: true, maxlength: 150, data: { exercise_form_target: "title" } %>
 
-	<%= form.label :description, "Descrição" %>
-	<%= form.text_area :description, maxlength: 255 %>
+		<%= form.label :description, "Descrição" %>
+		<%= form.text_area :description, maxlength: 255 %>
 
-	<%= form.label :exercise_type, "Tipo" %>
-	<%= form.select :exercise_type,
-		[["Quiz", "quiz"], ["Complete as lacunas", "fill_blanks"], ["Ordenação", "ordering"], ["Palavra cruzada", "crossword"], ["Jogo da memória", "memory_game"]],
-		{ include_blank: "Selecione um tipo" },
-		required: true,
-		data: { exercise_form_target: "typeSelect", action: "change->exercise-form#changeType" } %>
+		<%= form.label :exercise_type, "Tipo" %>
+		<%= form.select :exercise_type,
+			[["Quiz", "quiz"], ["Complete as lacunas", "fill_blanks"], ["Ordenação", "ordering"], ["Palavra cruzada", "crossword"], ["Jogo da memória", "memory_game"]],
+			{ include_blank: "Selecione um tipo" },
+			required: true,
+			data: { exercise_form_target: "typeSelect", action: "change->exercise-form#changeType" } %>
+	</div>
 
 	<%= form.hidden_field :object, value: exercise.object.to_json, data: { exercise_form_target: "objectInput" } %>
 
@@ -57,7 +59,7 @@
 		<template data-exercise-form-target="questionTemplate">
 			<fieldset class="quiz-question" data-question>
 				<legend data-question-title></legend>
-				<button type="button" class="button danger" data-action="exercise-form#removeQuestion">Remover pergunta</button>
+				<button type="button" class="button danger quiz-remove-button" aria-label="Remover pergunta" title="Remover pergunta" data-action="exercise-form#removeQuestion"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
 
 				<label>Tipo da pergunta
 					<select data-question-type data-action="change->exercise-form#changeQuestionType">
@@ -76,10 +78,10 @@
 						<div class="quiz-option" data-option-row>
 							<label>Alternativa<input type="text" data-option-text></label>
 							<label class="quiz-correct-option"><input type="radio" data-option-correct> Correta</label>
-							<button type="button" class="button danger" data-action="exercise-form#removeOption">Remover alternativa</button>
+							<button type="button" class="button danger quiz-remove-button" aria-label="Remover alternativa" title="Remover alternativa" data-action="exercise-form#removeOption"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
 						</div>
 					</template>
-					<button type="button" class="button" data-action="exercise-form#addOption">Adicionar alternativa</button>
+					<button type="button" class="button quiz-add-button" data-action="exercise-form#addOption">Adicionar alternativa</button>
 				</fieldset>
 
 				<fieldset data-question-true-false-panel hidden disabled>
@@ -94,11 +96,12 @@
 				</fieldset>
 			</fieldset>
 		</template>
-		<button type="button" class="button" data-action="exercise-form#addQuestion">Adicionar pergunta</button>
+		<button type="button" class="button quiz-add-button" data-action="exercise-form#addQuestion">Adicionar pergunta</button>
 		<p class="errors" data-exercise-form-target="error" role="alert" hidden></p>
 	</section>
 
-	<section data-exercise-form-target="fillBlanksFields" hidden>
+	<section class="fill-blanks-editor" data-exercise-form-target="fillBlanksFields" hidden>
+		<h2>Editor de lacunas</h2>
 		<button type="button" class="button" data-action="exercise-form#openFillBlanksAiModal">Gerar lacunas com IA</button>
 		<dialog class="quiz-ai-modal" data-exercise-form-target="fillBlanksAiModal" data-ai-generation-kind="fillBlanks" data-action="close->exercise-form#invalidateAiGeneration" aria-labelledby="fill-blanks-ai-title">
 			<h2 id="fill-blanks-ai-title">Gerar exercício de lacunas com IA</h2>
@@ -137,7 +140,8 @@
 		<p class="errors" data-exercise-form-target="blankError" role="alert" hidden></p>
 	</section>
 
-	<section data-exercise-form-target="orderingFields" hidden>
+	<section class="ordering-editor" data-exercise-form-target="orderingFields" hidden>
+		<h2>Editor de ordenação</h2>
 		<%= label_tag :ordering_format, "Formato da ordenação" %>
 		<%= select_tag :ordering_format,
 			options_for_select([["Sequência única", "single_sequence"], ["Múltiplas frases", "multiple_sentences"]]),
@@ -342,8 +346,8 @@
 		<%= text_area_tag :exercise_object_json, JSON.pretty_generate(exercise.object || {}), rows: 12, data: { exercise_form_target: "rawObject" } %>
 	</div>
 
-	<div class="actions">
-		<%= form.submit "Salvar", data: { exercise_form_target: "submitButton" } %>
-		<%= link_to "Cancelar", (@source_activity ? activity_path(@source_activity) : exercises_path), class: "button" %>
+	<div class="actions exercise-form-actions">
+		<%= form.submit "Salvar", class: "exercise-form-submit", data: { exercise_form_target: "submitButton" } %>
+		<%= link_to "Cancelar", (@source_activity ? activity_path(@source_activity) : exercises_path), class: "button exercise-form-cancel" %>
 	</div>
 <% end %>

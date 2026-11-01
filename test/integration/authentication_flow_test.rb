@@ -12,6 +12,33 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     assert_select "a", text: "Entrar como aluno"
   end
 
+  test "login form keeps the selected profile and account links" do
+    {
+      "teacher" => "Professor",
+      "student" => "Aluno"
+    }.each do |role, label|
+      get login_url(role:)
+
+      assert_response :success
+      assert_select ".login-intro[data-controller='login-particles'] canvas.login-particles-canvas[aria-hidden='true']"
+      assert_select ".login-intro-rotating-copy[data-controller='login-rotating-text']" do
+        assert_select ".login-rotating-accessible", text: "Aqui, você pode aprender, explorar e conquistar."
+        assert_select ".login-rotating-visual[aria-hidden='true']"
+        assert_select "[data-login-rotating-text-target='word']", text: "Aprender."
+        assert_select "[data-login-rotating-text-target='word']", text: "Explorar."
+        assert_select "[data-login-rotating-text-target='word']", text: "Conquistar."
+      end
+      assert_select "h2#login-title", text: "Entrar no Ludus"
+      assert_select ".login-role-label", text: label
+      assert_select "input[type='hidden'][name='role'][value='#{role}']"
+      assert_select "input[name='username'][autocomplete='username'][required]"
+      assert_select "input[name='password'][autocomplete='current-password'][required]"
+      assert_select "a", text: "Criar cadastro"
+      assert_select "a", text: "Esqueci minha senha"
+      assert_select "a", text: "Escolher outro perfil"
+    end
+  end
+
   test "registers and logs in an open student account" do
     assert_difference("Student.count") do
       post register_url("student"), params: {

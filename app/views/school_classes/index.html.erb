@@ -1,9 +1,40 @@
-<main>
-	<div class="toolbar"><h1>Turmas</h1><% if current_teacher %><%= link_to "Nova turma", new_school_class_path, class: "button" %><% end %></div>
-	<% if current_student %><%= render "join_form" %><% end %>
-	<table><thead><tr><th>Nome</th><th>Professor</th><% if current_teacher %><th>Código</th><% end %><th></th></tr></thead><tbody>
-		<% @school_classes.each do |school_class| %>
-			<tr><td><%= school_class.name %></td><td><%= school_class.teacher.name %></td><% if current_teacher %><td><%= school_class.access_code %></td><% end %><td><%= link_to "Ver", school_class %><% if current_teacher %> | <%= link_to "Editar", edit_school_class_path(school_class) %> | <%= button_to "Desativar", school_class, method: :delete, class: "button danger", form: { data: { turbo_confirm: "Desativar esta turma? Ela deixará de aparecer na lista." } } %><% else %> | <%= button_to "Sair", leave_school_class_path(school_class), method: :delete, class: "button danger", form: { data: { turbo_confirm: "Sair desta turma? Você perderá o acesso às aulas até entrar novamente com o código." } } %><% end %></td></tr>
-		<% end %>
-	</tbody></table>
+<main class="school-classes-page">
+	<header class="school-classes-header">
+		<h1>Turmas</h1>
+		<% if current_teacher %><%= link_to "Nova turma", new_school_class_path, class: "button school-class-new-button" %><% end %>
+	</header>
+	<% if current_student %>
+		<section class="school-class-join-panel" aria-labelledby="school-class-join-heading">
+			<h2 id="school-class-join-heading">Entrar em uma turma</h2>
+			<%= render "join_form" %>
+		</section>
+	<% end %>
+	<% if @school_classes.any? %>
+		<ul class="school-class-grid" aria-label="Turmas">
+			<% @school_classes.each do |school_class| %>
+				<li>
+					<article class="school-class-card">
+						<div class="school-class-card-details">
+							<h2><%= school_class.name %></h2>
+							<p class="school-class-teacher">Professor: <%= school_class.teacher.name %></p>
+							<% if current_teacher %>
+								<p class="school-class-access-code"><span>Código de acesso</span><code><%= school_class.access_code %></code></p>
+							<% end %>
+						</div>
+						<div class="school-class-actions">
+							<%= link_to "Ver turma", school_class, class: "button school-class-view-button" %>
+							<% if current_teacher %>
+								<%= link_to "Editar", edit_school_class_path(school_class), class: "button school-class-edit-button" %>
+								<%= button_to "Desativar", school_class, method: :delete, class: "button school-class-danger-button", form: { data: { turbo_confirm: "Desativar esta turma? Ela deixará de aparecer na lista." } } %>
+							<% else %>
+								<%= button_to "Sair", leave_school_class_path(school_class), method: :delete, class: "button school-class-danger-button", form: { data: { turbo_confirm: "Sair desta turma? Você perderá o acesso às aulas até entrar novamente com o código." } } %>
+							<% end %>
+						</div>
+					</article>
+				</li>
+			<% end %>
+		</ul>
+	<% else %>
+		<p class="school-class-empty-state"><%= current_teacher ? "Você ainda não criou nenhuma turma." : "Você ainda não está matriculado em nenhuma turma." %></p>
+	<% end %>
 </main>

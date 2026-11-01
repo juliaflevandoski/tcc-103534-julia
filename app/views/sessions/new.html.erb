@@ -1,22 +1,58 @@
-<main>
-  <h1>Entrar no Ludus</h1>
-  <% if @role %>
-    <h2><%= @role == "teacher" ? "Professor" : "Aluno" %></h2>
-    <%= form_with url: login_path, method: :post do |form| %>
-      <%= hidden_field_tag :role, @role %>
-      <%= form.label :username, "Usuário" %>
-      <%= form.text_field :username, required: true, autofocus: true %>
-      <%= form.label :password, "Senha" %>
-      <%= form.password_field :password, required: true %>
-      <div class="actions"><%= form.submit "Entrar", class: "button" %></div>
+<main class="login-page">
+  <section class="login-intro" aria-labelledby="login-welcome-title" data-controller="login-particles">
+    <canvas class="login-particles-canvas" data-login-particles-target="canvas" aria-hidden="true"></canvas>
+    <%= link_to root_path, class: "login-brand", aria: { label: "Ludus - início" } do %>
+      <span class="login-brand-mark" aria-hidden="true">L</span>
+      <span>Ludus</span>
     <% end %>
-    <p><%= link_to "Criar cadastro", register_path(@role) %> | <%= link_to "Esqueci minha senha", new_password_reset_path(role: @role) %></p>
-    <p><%= link_to "Escolher outro perfil", login_path %></p>
-  <% else %>
-    <p>Escolha como deseja acessar.</p>
-    <div class="actions">
-      <%= link_to "Entrar como professor", login_path(role: "teacher"), class: "button" %>
-      <%= link_to "Entrar como aluno", login_path(role: "student"), class: "button" %>
+    <div class="login-intro-message">
+      <p class="login-eyebrow">Aprender também pode ser um jogo</p>
+      <h1 id="login-welcome-title">Bem-vindo ao Ludus</h1>
+      <p class="login-intro-rotating-copy" data-controller="login-rotating-text">
+        <span class="login-rotating-accessible">Aqui, você pode aprender, explorar e conquistar.</span>
+        <span class="login-rotating-visual" aria-hidden="true">
+          <span class="login-rotating-lead">Aqui, você pode</span>
+          <span class="login-rotating-word-slot">
+            <span class="login-rotating-word is-active" data-login-rotating-text-target="word">Aprender.</span>
+            <span class="login-rotating-word" data-login-rotating-text-target="word">Explorar.</span>
+            <span class="login-rotating-word" data-login-rotating-text-target="word">Conquistar.</span>
+          </span>
+        </span>
+      </p>
     </div>
-  <% end %>
+    <p class="login-intro-footer">Aprendizagem que inspira novas conquistas.</p>
+  </section>
+
+  <section class="login-auth" aria-labelledby="login-title">
+    <div class="login-card">
+      <p class="login-card-eyebrow">Sua jornada continua aqui</p>
+      <h2 id="login-title">Entrar no Ludus</h2>
+      <% if @role %>
+        <p class="login-role-label"><%= @role == "teacher" ? "Professor" : "Aluno" %></p>
+        <%= form_with url: login_path, method: :post do |form| %>
+          <%= hidden_field_tag :role, @role %>
+          <%= form.label :username, "Usuário" %>
+          <%= form.text_field :username, required: true, autofocus: true, autocomplete: "username", class: "login-input" %>
+          <%= form.label :password, "Senha" %>
+          <%= form.password_field :password, required: true, autocomplete: "current-password", class: "login-input" %>
+          <div class="actions login-actions"><%= form.submit "Entrar", class: "button login-submit" %></div>
+        <% end %>
+        <nav class="login-links" aria-label="Opções da conta">
+          <%= link_to "Criar cadastro", register_path(@role) %>
+          <%= link_to "Esqueci minha senha", new_password_reset_path(role: @role) %>
+        </nav>
+        <%= link_to "Escolher outro perfil", login_path, class: "login-back-link" %>
+      <% else %>
+        <p class="login-description">Escolha como deseja acessar.</p>
+        <div class="login-role-options">
+          <%= link_to login_path(role: "teacher"), class: "login-role-option" do %>
+            <span>Entrar como professor</span>
+          <% end %>
+          <%= link_to login_path(role: "student"), class: "login-role-option" do %>
+            <span>Entrar como aluno</span>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </section>
 </main>

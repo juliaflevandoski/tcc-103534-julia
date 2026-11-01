@@ -5,7 +5,7 @@ class SchoolClassActivityListTest < ActionDispatch::IntegrationTest
 
   setup do
     @teacher = create_user(Teacher, "list-teacher")
-    @school_class = @teacher.school_classes.create!(name: "Turma lista", active: true)
+    @school_class = @teacher.school_classes.create!(name: "Turma lista", description: "Descrição da turma", active: true)
     @published = @school_class.activities.create!(title: "Aula publicada", published: true)
     @draft = @school_class.activities.create!(title: "Aula rascunho", published: false)
     @inactive = @school_class.activities.create!(title: "Aula inativa", published: true, active: false)
@@ -23,12 +23,17 @@ class SchoolClassActivityListTest < ActionDispatch::IntegrationTest
     get school_class_url(@school_class)
 
     assert_response :success
-    assert_select "h3 a[href='#{activity_path(@published)}']", text: "Aula publicada"
-    assert_select "h3 a[href='#{activity_path(@draft)}']", text: "Aula rascunho"
-    assert_select "h3 a", text: "Aula inativa", count: 0
-    assert_select "p", text: "Publicada", count: 1
-    assert_select "p", text: "Rascunho", count: 1
-    assert_select "strong", text: @school_class.access_code
+    assert_select ".school-class-show-header h1#school-class-show-title", text: @school_class.name
+    assert_select ".school-class-show-description", text: @school_class.description
+    assert_select ".school-class-show-teacher span", text: @teacher.name
+    assert_select ".school-class-show-access-code code", text: @school_class.access_code
+    assert_select ".school-class-show-activities-grid > li", count: 2
+    assert_select ".school-class-show-activity-card h3 a[href='#{activity_path(@published)}']", text: "Aula publicada"
+    assert_select ".school-class-show-activity-card h3 a[href='#{activity_path(@draft)}']", text: "Aula rascunho"
+    assert_select ".school-class-show-activity-card h3 a", text: "Aula inativa", count: 0
+    assert_select ".school-class-show-activity-status.is-published", text: "Publicada", count: 1
+    assert_select ".school-class-show-activity-status.is-draft", text: "Rascunho", count: 1
+    assert_select ".school-class-show-access-code code", text: @school_class.access_code
     assert_select "a[href='#{edit_school_class_path(@school_class)}']", text: "Editar"
     assert_no_exercise_management
   end
@@ -48,11 +53,15 @@ class SchoolClassActivityListTest < ActionDispatch::IntegrationTest
     get school_class_url(@school_class)
 
     assert_response :success
-    assert_select "h3 a[href='#{activity_path(@published)}']", text: "Aula publicada"
-    assert_select "h3 a", text: "Aula rascunho", count: 0
-    assert_select "h3 a", text: "Aula inativa", count: 0
-    assert_select "p", text: "Rascunho", count: 0
-    assert_select "strong", text: @school_class.access_code, count: 0
+    assert_select ".school-class-show-activity-card h3 a[href='#{activity_path(@published)}']", text: "Aula publicada"
+    assert_select ".school-class-show-activity-card h3 a", text: "Aula rascunho", count: 0
+    assert_select ".school-class-show-activity-card h3 a", text: "Aula inativa", count: 0
+    assert_select ".school-class-show-activity-status", count: 0
+    assert_select ".school-class-show-access-code", count: 0
+    assert_select ".school-class-show-actions a[href='#{new_activity_path(class_id: @school_class.id)}']", count: 0
+    assert_select ".school-class-show-actions a[href='#{edit_school_class_path(@school_class)}']", count: 0
+    assert_select ".school-class-show-actions a[href='#{class_students_path}']", count: 0
+    assert_select ".school-class-show-actions a[href='#{school_class_class_posts_path(@school_class)}']", text: "Mural"
     assert_select "h2", text: "Alunos matriculados", count: 0
     assert_no_exercise_management
   end
@@ -87,6 +96,21 @@ class SchoolClassActivityListTest < ActionDispatch::IntegrationTest
     get school_class_url(@school_class)
 
     assert_redirected_to root_url
+  end
+
+  test "teacher and student see a friendly empty state when no activities are visible" do
+    empty_class = @teacher.school_classes.create!(name: "Turma sem aulas", active: true)
+    empty_class.class_students.create!(student: @student, active: true)
+
+    [ @teacher, @student ].each do |user|
+      login(user)
+      get school_class_url(empty_class)
+
+      assert_response :success
+      assert_select ".school-class-show-activities-empty", text: "Ainda não há aulas disponíveis nesta turma."
+      assert_select ".school-class-show-activities-grid", count: 0
+      delete logout_url
+    end
   end
 
   test "activity page still shows exercises and teacher actions" do
@@ -150,7 +174,7 @@ class SchoolClassActivityListTest < ActionDispatch::IntegrationTest
     assert_select "tr[draggable='true']", count: 0
     assert_select "form[action='#{activity_exercises_path}']", count: 0
     assert_select "a", text: "Criar exercício", count: 0
-    assert_select "button", text: "Remover", count: 0
+    assert_select "button[aria-label='Remover exercício']", count: 0
     assert_select "a", text: @exercise.title, count: 0
   end
 

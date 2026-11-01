@@ -56,6 +56,23 @@ class ActivityVisibleExercisesTest < ActionDispatch::IntegrationTest
     assert_not @last.reload.active?
   end
 
+  test "exercise list keeps sortable structure for teachers and hides it from students" do
+    login(@teacher)
+    get activity_url(@activity)
+
+    assert_select "section.activity-exercise-list-panel h2#activity-exercise-list-title", text: "Exercícios na aula"
+    assert_select "table.activity-exercise-list-table--teacher[data-controller='sortable-exercises'][data-sortable-exercises-url-value='#{reorder_activity_exercises_path(@activity)}']"
+    assert_select "tbody[data-sortable-exercises-target='list'] tr[data-id][draggable='true'] span[data-position]", count: 2
+    assert_select ".activity-exercise-position .fa-grip-vertical[aria-hidden='true']", count: 2
+
+    delete logout_url
+    login(@student)
+    get activity_url(@activity)
+
+    assert_select "table.activity-exercise-list-table--student", count: 1
+    assert_select "[data-controller='sortable-exercises'], [data-sortable-exercises-target='list'], tr[data-id], .activity-exercise-actions", count: 0
+  end
+
   test "next exercise navigation keeps the teacher order and skips hidden links" do
     @first.update!(position: 1)
     @last.update!(position: 5)

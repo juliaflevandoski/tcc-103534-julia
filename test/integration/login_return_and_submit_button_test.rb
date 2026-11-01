@@ -93,10 +93,14 @@ class LoginReturnAndSubmitButtonTest < ActionDispatch::IntegrationTest
     get exercises_url
     post login_url, params: { role: "teacher", username: @teacher.username, password: "wrong" }
     assert_redirected_to login_url(role: "teacher")
+    assert_equal "Usuário ou senha inválidos.", flash[:alert]
+    follow_redirect!
+    assert_select ".alert", text: "Usuário ou senha inválidos."
 
     login_as(@teacher, "teacher")
 
     assert_redirected_to exercises_url
+    assert_equal "Login realizado com sucesso.", flash[:notice]
   end
 
   test "non GET, JSON and AJAX requests are never stored" do

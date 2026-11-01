@@ -52,13 +52,29 @@ class ActivityEditOrganizationTest < ActionDispatch::IntegrationTest
     get activity_url(@activity, exercise_id: @spare.id)
 
     assert_response :success
+    assert_select ".activity-show-header h1", text: @activity.title
+    assert_select ".activity-show-class a[href='#{school_class_path(@school_class)}']", text: @school_class.name
+    assert_select ".activity-show-publication.is-published", text: "Publicada"
+    assert_select ".activity-show-actions a[href='#{school_class_path(@school_class)}']", text: "Voltar à turma"
+    assert_select ".activity-show-actions a[href='#{edit_activity_path(@activity)}']", text: "Editar"
+    assert_select ".activity-assignment-panel[aria-labelledby='activity-assignment-title']"
+    assert_select ".activity-assignment-panel h2", text: "Adicionar exercício à aula"
     assert_select "form[action='#{activity_exercises_path}']", count: 1
+    assert_select ".activity-assignment-form input[name='activity_exercise[activity_id]'][type='hidden'][value='#{@activity.id}']"
     assert_select "select[name='activity_exercise[exercise_id]'] option[selected][value='#{@spare.id}']", count: 1
-    assert_select "a[href='#{new_exercise_path(activity_id: @activity.id)}']", text: "Criar exercício"
+    assert_select ".activity-assignment-panel a[href='#{new_exercise_path(activity_id: @activity.id)}']", text: "Criar exercício"
+    assert_select ".activity-assignment-panel input[name='activity_exercise[points]'][min='0'][max='#{ActivityExercise::MAX_POINTS}'][step='1']"
     assert_select "table.exercise-table[data-controller='sortable-exercises']", count: 1
     assert_select "tr[data-id='#{@link.id}'][draggable='true']", count: 1
-    assert_select "tr[data-id='#{@link.id}'] form[action='#{activity_exercise_path(@link)}'] input[name='_method'][value='delete']"
+    assert_select "tr[data-id='#{@link.id}'] form[action='#{activity_exercise_path(@link)}'][data-turbo-confirm='Remover este exercício da aula? O exercício continuará disponível na sua lista.']" do
+      assert_select "input[name='_method'][value='delete']"
+      assert_select "button.activity-exercise-remove[aria-label='Remover exercício'][title='Remover exercício'] i.fa-trash-can[aria-hidden='true']"
+    end
     assert_no_difference("ActivityExercise.count") { get activity_url(@activity, exercise_id: @spare.id) }
+
+    @activity.update!(published: false)
+    get activity_url(@activity)
+    assert_select ".activity-show-publication.is-draft", text: "Rascunho"
   end
 
   test "student sees exercises without administrative controls" do
@@ -67,7 +83,12 @@ class ActivityEditOrganizationTest < ActionDispatch::IntegrationTest
     get activity_url(@activity)
 
     assert_response :success
+    assert_select ".activity-show-publication.is-published", text: "Publicada"
+    assert_select ".activity-show-progress .result-status--in-progress", text: "Em andamento"
+    assert_select ".activity-show-actions a[href='#{school_class_path(@school_class)}']", text: "Voltar à turma"
+    assert_select ".activity-show-actions a[href='#{edit_activity_path(@activity)}']", count: 0
     assert_select "a[href='#{exercise_path(@exercise, activity_exercise_id: @link.id)}']", text: @exercise.title
+    assert_select ".activity-assignment-panel", count: 0
     assert_select "form[action='#{activity_exercises_path}']", count: 0
     assert_select "tr[draggable='true']", count: 0
     assert_select "a", text: "Criar exercício", count: 0

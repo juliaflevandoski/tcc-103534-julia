@@ -1,14 +1,26 @@
 <main>
-	<h1><%= @activity.title %></h1>
-	<p>Turma: <%= link_to @activity.school_class.name, school_class_path(@activity.school_class) %></p>
-	<p><%= link_to "Voltar à turma", school_class_path(@activity.school_class), class: "button" %></p>
-	<p><%= @activity.published? ? "Publicada" : "Rascunho" %></p>
-	<% if current_student && @activity_exercises.any? %>
-		<% if @lesson_completed %>
-			<p><span class="result-status result-status--completed">Aula concluída</span></p>
-		<% else %>
-			<p><span class="result-status result-status--in-progress">Em andamento</span></p>
-		<% end %>
-	<% end %>	<% if current_teacher %><%= link_to "Editar", edit_activity_path(@activity), class: "button" %><% end %>
+	<section class="activity-show-header" aria-labelledby="activity-show-title">
+		<div class="activity-show-header-details">
+			<h1 id="activity-show-title"><%= @activity.title %></h1>
+			<p class="activity-show-class">Turma: <%= link_to @activity.school_class.name, school_class_path(@activity.school_class) %></p>
+			<p class="activity-show-publication <%= @activity.published? ? "is-published" : "is-draft" %>">
+				<span class="activity-show-publication-indicator" aria-hidden="true"></span>
+				<%= @activity.published? ? "Publicada" : "Rascunho" %>
+			</p>
+			<% if current_student && @activity_exercises.any? %>
+				<p class="activity-show-progress">
+					<% if @lesson_completed %>
+						<span class="result-status result-status--completed">Aula concluída</span>
+					<% else %>
+						<span class="result-status result-status--in-progress">Em andamento</span>
+					<% end %>
+				</p>
+			<% end %>
+		</div>
+		<div class="activity-show-actions">
+			<%= link_to "Voltar à turma", school_class_path(@activity.school_class), class: "button activity-show-back-button" %>
+			<% if current_teacher %><%= link_to "Editar", edit_activity_path(@activity), class: "button activity-show-edit-button" %><% end %>
+		</div>
+	</section>
 	<%= render "exercise_assignments", activity: @activity, activity_exercises: @activity_exercises, available_exercises: @available_exercises, activity_exercise: @activity_exercise %>
 </main>

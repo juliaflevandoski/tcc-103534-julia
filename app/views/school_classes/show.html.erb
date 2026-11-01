@@ -1,22 +1,68 @@
-<main>
-	<h1><%= @school_class.name %></h1>
-	<p><%= @school_class.description %></p>
-	<p>Professor: <%= @school_class.teacher.name %></p>
-	<% if current_teacher %><p>Código de acesso: <strong><%= @school_class.access_code %></strong></p><%= link_to "Editar", edit_school_class_path(@school_class), class: "button" %><% end %>
+<main class="school-class-show">
+	<section class="school-class-show-header" aria-labelledby="school-class-show-title">
+		<div class="school-class-show-details">
+			<h1 id="school-class-show-title"><%= @school_class.name %></h1>
+			<% if @school_class.description.present? %><p class="school-class-show-description"><%= @school_class.description %></p><% end %>
+			<p class="school-class-show-teacher">Professor: <span><%= @school_class.teacher.name %></span></p>
+		</div>
+		<% if current_teacher %>
+			<div class="school-class-show-access-code" aria-label="Código de acesso da turma">
+				<span>Código de acesso</span>
+				<code><%= @school_class.access_code %></code>
+			</div>
+		<% end %>
+		<nav class="school-class-show-actions" aria-label="Ações da turma">
+			<% if current_teacher %>
+				<%= link_to "Nova aula", new_activity_path(class_id: @school_class.id), class: "button school-class-show-action school-class-show-primary" %>
+				<%= link_to "Editar", edit_school_class_path(@school_class), class: "button school-class-show-action school-class-show-secondary" %>
+				<%= link_to "Gerenciar alunos", class_students_path, class: "button school-class-show-action school-class-show-secondary" %>
+			<% end %>
+			<%= link_to "Mural", school_class_class_posts_path(@school_class), class: "button school-class-show-action#{current_teacher ? ' school-class-show-secondary' : ' school-class-show-primary'}" %>
+		</nav>
+	</section>
+	<section class="school-class-show-activities" aria-labelledby="school-class-show-activities-title">
+		<h2 id="school-class-show-activities-title">Aulas</h2>
+		<% if @activities.any? %>
+			<ul class="school-class-show-activities-grid" aria-label="Aulas da turma">
+				<% @activities.each do |activity| %>
+					<li>
+						<article class="school-class-show-activity-card">
+							<h3><%= link_to activity.title, activity_path(activity) %></h3>
+							<p class="school-class-show-activity-count"><%= pluralize(@exercise_counts.fetch(activity.id, 0), "exercício") %></p>
+							<% if current_teacher %>
+								<p class="school-class-show-activity-status <%= activity.published? ? 'is-published' : 'is-draft' %>">
+									<span class="school-class-show-activity-status-indicator" aria-hidden="true"></span>
+									<%= activity.published? ? "Publicada" : "Rascunho" %>
+								</p>
+							<% end %>
+						</article>
+					</li>
+				<% end %>
+			</ul>
+		<% else %>
+			<p class="school-class-show-activities-empty">Ainda não há aulas disponíveis nesta turma.</p>
+		<% end %>
+	</section>
 	<% if current_teacher %>
-		<%= link_to "Nova aula", new_activity_path(class_id: @school_class.id), class: "button" %>
-		<%= link_to "Gerenciar alunos", class_students_path, class: "button" %>
-	<% end %>
-	<p><%= link_to "Mural", school_class_class_posts_path(@school_class), class: "button" %></p>
-	<h2>Aulas</h2>
-	<% @activities.each do |activity| %>
-		<h3><%= link_to activity.title, activity_path(activity) %></h3>
-		<% count = @exercise_counts.fetch(activity.id, 0) %>
-		<p><%= pluralize(count, "exercício") %></p>
-		<% if current_teacher %><p><%= activity.published? ? "Publicada" : "Rascunho" %></p><% end %>
-	<% end %>
-	<% if current_teacher %>
-		<h2>Alunos matriculados</h2>
-		<ul><% @class_students.each do |class_student| %><li><%= class_student.student.name %> (<%= class_student.student.email %>)</li><% end %></ul>
+		<section class="school-class-show-students" aria-labelledby="school-class-show-students-title">
+			<h2 id="school-class-show-students-title">Alunos matriculados</h2>
+			<% if @class_students.any? %>
+				<ul class="school-class-show-students-list">
+					<% @class_students.each do |class_student| %>
+						<% student = class_student.student %>
+						<% initial = student.name.to_s.scrub.strip.match(/\A\X/u)&.to_s&.upcase.presence || "?" %>
+						<li class="school-class-show-student">
+							<span class="school-class-show-student-avatar" aria-hidden="true"><%= initial %></span>
+							<div class="school-class-show-student-details">
+								<p class="school-class-show-student-name"><%= student.name %></p>
+								<p class="school-class-show-student-email"><%= student.email %></p>
+							</div>
+						</li>
+					<% end %>
+				</ul>
+			<% else %>
+				<p class="school-class-show-students-empty">Ainda não há alunos matriculados nesta turma.</p>
+			<% end %>
+		</section>
 	<% end %>
 </main>

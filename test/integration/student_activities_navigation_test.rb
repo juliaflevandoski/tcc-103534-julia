@@ -28,7 +28,7 @@ class StudentActivitiesNavigationTest < ActionDispatch::IntegrationTest
     assert_select "p a[href='#{school_class_path(school_class)}']", text: school_class.name, count: 1
     assert_select "form[action='#{activity_exercises_path}']", count: 0
     assert_select "tr[draggable='true']", count: 0
-    assert_select "button", text: "Remover", count: 0
+    assert_select "button[aria-label='Remover exercício']", count: 0
     assert_select "a", text: "Editar", count: 0
   end
 

@@ -77,9 +77,9 @@ class SchoolClassExerciseCountTest < ActionDispatch::IntegrationTest
 
   def assert_counts(expected)
     expected.each do |title, text|
-      assert_select "h3 a", text: title, count: 1
-      assert_select "h3:has(a)", text: title
-      heading = css_select("h3").find { |h| h.text.strip == title }
+      assert_select ".school-class-show-activity-card h3 a", text: title, count: 1
+      assert_select ".school-class-show-activity-card h3:has(a)", text: title
+      heading = css_select(".school-class-show-activity-card h3").find { |h| h.text.strip == title }
       assert_equal text, heading.next_element.text.strip, "contagem de #{title}"
     end
   end
