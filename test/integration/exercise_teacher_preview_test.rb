@@ -126,13 +126,13 @@ class ExerciseTeacherPreviewTest < ActionDispatch::IntegrationTest
     assert_equal updated_object, exercise.reload.object
   end
 
-  test "each AI generation dialog has a Cancel button and native close invalidation" do
+  test "each AI generation dialog has a single close button and native close invalidation" do
     get new_exercise_url
 
     assert_response :success
     %w[quizAiModal fillBlanksAiModal orderingAiModal crosswordAiModal memoryGameAiModal].each do |target|
       assert_select "dialog[data-exercise-form-target='#{target}'][data-action~='close->exercise-form#invalidateAiGeneration']", count: 1 do
-        assert_select "button[type='button'][data-action='exercise-form#closeAiModal']", text: "Cancelar", count: 1
+        assert_select "button[type='button'][data-action='exercise-form#closeAiModal'][aria-label='Fechar geração com IA'][title='Fechar']", count: 1
       end
     end
   end
