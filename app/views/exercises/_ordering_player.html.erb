@@ -1,6 +1,10 @@
-	<h1><%= exercise.title %></h1>
-	<p><%= instructions %></p>
-	<p><%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if activity_exercise&.persisted? %></p>
+<div class="ordering-player-page">
+	<header class="ordering-player-header">
+		<p class="ordering-player-type">Ordenação</p>
+		<h1 class="ordering-player-title"><%= exercise.title %></h1>
+		<p class="ordering-player-instructions"><%= instructions %></p>
+		<%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button ordering-player-back" if activity_exercise&.persisted? %>
+	</header>
 	<%= form_with url: exercise_attempts_path, scope: :exercise_attempt,
 		data: { controller: "ordering-player", action: "submit->ordering-player#announceOrder",
 			ordering_player_expected_ids_value: items.map { |item| item.fetch("id") }.to_json } do %>
@@ -25,3 +29,4 @@
 		<p class="ordering-player-status" data-ordering-player-target="status" aria-live="polite"></p>
 		<%= submit_tag "Enviar ordem", class: "button", data: { turbo_submits_with: "Enviando..." } %>
 	<% end %>
+		</div>

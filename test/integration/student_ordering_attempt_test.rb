@@ -69,7 +69,7 @@ class StudentOrderingAttemptTest < ActionDispatch::IntegrationTest
     assert_equal 1, document.css("form[action='/exercise_attempts']").length
     assert_equal "17", document.at_css("input[name='exercise_attempt[activity_exercise_id]']")["value"]
     assert_equal 1, document.css("button[type='submit'][disabled]").length
-    assert_includes document.text, "O envio ainda não está disponível."
+    assert_includes document.text, "Organize as palavras de cada frase na ordem correta."
     assert_not_includes html, "correct_order"
   end
 

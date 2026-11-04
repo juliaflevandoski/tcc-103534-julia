@@ -1,5 +1,9 @@
-<h1><%= exercise.title %></h1>
-<p><%= exercise.object.fetch("instructions") %></p>
+<div class="memory-player-page">
+<header class="memory-player-header">
+	<p class="memory-player-type">Jogo da memória</p>
+	<h1 class="memory-player-title"><%= exercise.title %></h1>
+	<p class="memory-player-instructions"><%= exercise.object.fetch("instructions") %></p>
+</header>
 
 <% if attempt.nil? || attempt.answer.to_h["completed"] %>
 	<% if attempt %>
@@ -7,29 +11,37 @@
 		<% total_pairs = attempt.correct.fetch("deck").map { |card| card.fetch("pair_id") }.uniq.length %>
 		<section class="memory-result" aria-live="polite">
 			<h2>Jogo concluído</h2>
-			<p>Pares encontrados: <%= answer.fetch("matches", 0) %> de <%= total_pairs %></p>
-			<p>Tentativas: <%= answer.fetch("attempts", 0) %></p>
-			<p>Acertos: <%= answer.fetch("matches", 0) %></p>
-			<p>Erros: <%= answer.fetch("errors", 0) %></p>
-			<p>Pontuação: <%= attempt.score %></p>
+			<p>Pares encontrados: <strong><%= answer.fetch("matches", 0) %></strong> de <%= total_pairs %></p>
+			<p>Tentativas: <strong><%= answer.fetch("attempts", 0) %></strong></p>
+			<p>Acertos: <strong><%= answer.fetch("matches", 0) %></strong></p>
+			<p>Erros: <strong><%= answer.fetch("errors", 0) %></strong></p>
+			<p>Pontuação: <strong><%= attempt.score %></strong></p>
 			<p>XP concedido nesta partida: <%= attempt.correct["xp_award_claimed"] ? attempt.score : 0 %></p>
-			<p>Tempo: <%= attempt.time_spent || 0 %> segundos</p>
-			<%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if activity_exercise&.persisted? %>
-			<%= link_to "Próximo exercício", exercise_path(next_activity_exercise.exercise, activity_exercise_id: next_activity_exercise.id), class: "button" if local_assigns[:next_activity_exercise] %>
+			<p>Tempo: <strong><%= attempt.time_spent || 0 %></strong> segundos</p>
+			<div class="memory-result-actions">
+				<%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if activity_exercise&.persisted? %>
+				<%= link_to "Próximo exercício", exercise_path(next_activity_exercise.exercise, activity_exercise_id: next_activity_exercise.id), class: "button" if local_assigns[:next_activity_exercise] %>
+				<%= form_with url: exercise_attempts_path, scope: :exercise_attempt do %>
+					<%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
+					<%= submit_tag "Jogar novamente", class: "button" %>
+				<% end %>
+			</div>
 		</section>
 	<% end %>
+	<% if attempt.nil? %>
 	<%= form_with url: exercise_attempts_path, scope: :exercise_attempt do %>
 		<%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
-		<%= submit_tag(attempt ? "Jogar novamente" : "Começar jogo", class: "button") %>
-		<%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if attempt.nil? && activity_exercise&.persisted? %>
+		<%= submit_tag "Começar jogo", class: "button" %>
+		<%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if activity_exercise&.persisted? %>
+	<% end %>
 	<% end %>
 <% else %>
 	<div class="memory-game" data-controller="memory-game" data-memory-game-turn-url-value="<%= memory_game_turn_exercise_attempt_path(attempt) %>">
 		<div class="memory-stats" aria-live="polite">
-			<p>Pares: <strong data-memory-game-target="matches"><%= game.fetch(:matches) %></strong> / <%= attempt.correct.fetch("deck").map { |card| card.fetch("pair_id") }.uniq.length %></p>
-			<p>Tentativas: <strong data-memory-game-target="attempts"><%= game.fetch(:attempts) %></strong></p>
-			<p>Erros: <strong data-memory-game-target="errors"><%= game.fetch(:errors) %></strong></p>
-			<p>Pontuação: <strong data-memory-game-target="score"><%= game.fetch(:score) %></strong></p>
+			<p><span class="memory-stat-label">Pares</span> <span class="memory-stat-value"><strong data-memory-game-target="matches"><%= game.fetch(:matches) %></strong> / <%= attempt.correct.fetch("deck").map { |card| card.fetch("pair_id") }.uniq.length %></span></p>
+			<p><span class="memory-stat-label">Tentativas</span> <span class="memory-stat-value"><strong data-memory-game-target="attempts"><%= game.fetch(:attempts) %></strong></span></p>
+			<p><span class="memory-stat-label">Erros</span> <span class="memory-stat-value"><strong data-memory-game-target="errors"><%= game.fetch(:errors) %></strong></span></p>
+			<p><span class="memory-stat-label">Pontuação</span> <span class="memory-stat-value"><strong data-memory-game-target="score"><%= game.fetch(:score) %></strong></span></p>
 		</div>
 		<p class="memory-game-back-link"><%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if activity_exercise&.persisted? %></p>
 		<p data-memory-game-target="status" role="status"></p>
@@ -69,12 +81,15 @@
 			<p>Pontuação: <strong data-memory-game-target="finalScore"></strong></p>
 			<p>XP concedido nesta partida: <strong data-memory-game-target="finalXp"></strong></p>
 			<p>Tempo: <strong data-memory-game-target="finalTime"></strong> segundos</p>
-			<%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if activity_exercise&.persisted? %>
-			<%= link_to "Próximo exercício", exercise_path(next_activity_exercise.exercise, activity_exercise_id: next_activity_exercise.id), class: "button" if local_assigns[:next_activity_exercise] %>
-			<%= form_with url: exercise_attempts_path, scope: :exercise_attempt do %>
-				<%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
-				<%= submit_tag "Jogar novamente", class: "button" %>
-			<% end %>
+			<div class="memory-result-actions">
+				<%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if activity_exercise&.persisted? %>
+				<%= link_to "Próximo exercício", exercise_path(next_activity_exercise.exercise, activity_exercise_id: next_activity_exercise.id), class: "button" if local_assigns[:next_activity_exercise] %>
+				<%= form_with url: exercise_attempts_path, scope: :exercise_attempt do %>
+					<%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
+					<%= submit_tag "Jogar novamente", class: "button" %>
+				<% end %>
+			</div>
 		</section>
 	</div>
 <% end %>
+</div>

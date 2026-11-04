@@ -1,7 +1,11 @@
 <% prefilled_cells = local_assigns[:cells] || {} %>
-<h1><%= exercise.title %></h1>
-<p><%= crossword.fetch(:instructions) %></p>
-<p><%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if activity_exercise&.persisted? %></p>
+<div class="crossword-player-page">
+<header class="crossword-player-header">
+  <p class="crossword-player-type">Palavra cruzada</p>
+  <h1 class="crossword-player-title"><%= exercise.title %></h1>
+  <p class="crossword-player-instructions"><%= crossword.fetch(:instructions) %></p>
+  <%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button crossword-player-back" if activity_exercise&.persisted? %>
+</header>
 <%= form_with url: exercise_attempts_path, scope: :exercise_attempt, data: { controller: "crossword-player", action: "input->crossword-player#updatePendingStatus submit->crossword-player#serializeAnswer" } do %>
   <%= hidden_field_tag "exercise_attempt[activity_exercise_id]", activity_exercise.id %>
   <%= hidden_field_tag "exercise_attempt[answer]", "{}", data: { crossword_player_target: "answer" } %>
@@ -45,3 +49,4 @@
   <p data-crossword-player-target="status" role="status" aria-live="polite"></p>
   <div class="actions"><%= submit_tag "Conferir cruzadinha", class: "button", data: { turbo_submits_with: "Enviando..." } %></div>
 <% end %>
+  </div>

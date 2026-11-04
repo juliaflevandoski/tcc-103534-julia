@@ -1,6 +1,10 @@
-<h1><%= exercise.title %></h1>
-<p><%= instructions %></p>
-<p><%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button" if activity_exercise&.persisted? %></p>
+<div class="ordering-multiple-player-page">
+<header class="ordering-multiple-player-header">
+	<p class="ordering-multiple-player-type">Ordenação</p>
+	<h1 class="ordering-multiple-player-title"><%= exercise.title %></h1>
+	<p class="ordering-multiple-player-instructions"><%= instructions %></p>
+	<%= link_to "Voltar à aula", activity_path(activity_exercise.activity), class: "button ordering-multiple-player-back" if activity_exercise&.persisted? %>
+</header>
 
 <%= form_with url: exercise_attempts_path, scope: :exercise_attempt,
 	data: { controller: "ordering-multiple-player", action: "submit->ordering-multiple-player#submit" } do %>
@@ -27,7 +31,7 @@
 			</ol>
 		</section>
 	<% end %>
-	<p class="ordering-player-status" data-ordering-multiple-player-target="status" role="status" aria-live="polite">Você pode reorganizar as palavras em cada frase. O envio ainda não está disponível.</p>
-	<p id="ordering-multiple-submission-notice">O envio das respostas estará disponível em uma próxima etapa.</p>
-	<button type="submit" class="button" data-ordering-multiple-player-target="submitButton" disabled aria-describedby="ordering-multiple-submission-notice">Enviar respostas</button>
+	<p class="ordering-player-status" data-ordering-multiple-player-target="status" role="status" aria-live="polite">Organize as palavras de cada frase na ordem correta.</p>
+	<button type="submit" class="button" data-ordering-multiple-player-target="submitButton" disabled>Enviar respostas</button>
 <% end %>
+	</div>
