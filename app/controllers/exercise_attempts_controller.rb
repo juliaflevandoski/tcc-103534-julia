@@ -16,7 +16,10 @@ class ExerciseAttemptsController < ApplicationController
     @result_sections = selected_classes.map do |school_class|
       ResultsDashboard.call(user: current_user, school_class:)
     end
-    @student_stat = current_student&.student_stat
+    if current_student
+      @level_info = StudentLevel.call(current_student.student_stat&.xp)
+      @badges = StudentBadges.call(current_student)
+    end
   end
 
   def show

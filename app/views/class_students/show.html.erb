@@ -1,1 +1,26 @@
-<main><h1>Matrícula</h1><p>Aluno: <%= @class_student.student.name %></p><p>Turma: <%= @class_student.school_class.name %></p><%= link_to "Editar", edit_class_student_path(@class_student), class: "button" %></main>
+<% context_class = context_school_class %>
+<main class="simple-form-page enrollment-show-page">
+  <header class="simple-form-header">
+    <span class="simple-form-badge">Matrícula</span>
+    <h1>Detalhes da matrícula</h1>
+  </header>
+
+  <div class="simple-form-card">
+    <dl class="enrollment-detail-list">
+      <div class="enrollment-detail">
+        <dt>Aluno</dt>
+        <dd><%= @class_student.student.name %></dd>
+      </div>
+      <div class="enrollment-detail">
+        <dt>Turma</dt>
+        <dd><%= @class_student.school_class.name %></dd>
+      </div>
+    </dl>
+
+    <div class="simple-form-actions">
+      <% if context_class %><%= link_to "Voltar à turma", school_class_path(context_class), class: "enrollment-show-link" %><% end %>
+      <%= link_to "Voltar às matrículas", class_students_path(class_id: context_class&.id), class: "button simple-form-cancel" %>
+      <%= link_to "Editar", edit_class_student_path(@class_student, class_id: context_class&.id), class: "button simple-form-submit" %>
+    </div>
+  </div>
+</main>

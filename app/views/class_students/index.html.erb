@@ -1,1 +1,52 @@
-<main><div class="toolbar"><h1>Matrículas</h1><%= link_to "Nova matrícula", new_class_student_path, class: "button" %></div><table><thead><tr><th>Aluno</th><th>Turma</th><th></th></tr></thead><tbody><% @class_students.each do |membership| %><tr><td><%= membership.student.name %></td><td><%= membership.school_class.name %></td><td><%= link_to "Ver", membership %> | <%= link_to "Editar", edit_class_student_path(membership) %> | <%= button_to "Desativar", membership, method: :delete, class: "button danger" %></td></tr><% end %></tbody></table></main>
+<% context_class = context_school_class %>
+<% context_id = context_class&.id %>
+<% total = @class_students.size %>
+<main class="enrollment-index-page">
+  <header class="enrollment-header">
+    <div class="enrollment-heading">
+      <span class="enrollment-badge">Matrículas</span>
+      <h1><%= context_class ? context_class.name : "Matrículas" %></h1>
+      <% if context_class %><p class="enrollment-subtitle">Gerenciamento de alunos da turma</p><% end %>
+      <p class="enrollment-count"><%= pluralize(total, "matrícula ativa", "matrículas ativas") %></p>
+    </div>
+    <div class="enrollment-header-actions">
+      <%= link_to "Nova matrícula", new_class_student_path(class_id: context_id), class: "button enrollment-primary" %>
+      <% if context_class %><%= link_to "Voltar à turma", school_class_path(context_class), class: "button enrollment-secondary" %><% end %>
+    </div>
+  </header>
+
+  <% if total.zero? %>
+    <div class="enrollment-empty">
+      <p><%= context_class ? "Esta turma ainda não possui alunos matriculados." : "Nenhuma matrícula encontrada." %></p>
+    </div>
+  <% else %>
+    <div class="enrollment-card">
+      <div class="enrollment-table-wrap">
+        <table class="enrollment-table">
+          <thead>
+            <tr>
+              <th scope="col">Aluno</th>
+              <% unless context_class %><th scope="col">Turma</th><% end %>
+              <th scope="col" class="enrollment-actions-head"><%= context_class ? "Ações" : tag.span("Ações", class: "enrollment-sr-only") %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @class_students.each do |membership| %>
+              <tr>
+                <td class="enrollment-student"><%= membership.student.name %></td>
+                <% unless context_class %><td><%= membership.school_class.name %></td><% end %>
+                <td class="enrollment-actions">
+                  <div class="enrollment-actions-group">
+                    <%= link_to "Ver", class_student_path(membership, class_id: context_id), class: "enrollment-action" %>
+                    <%= link_to "Editar", edit_class_student_path(membership, class_id: context_id), class: "enrollment-action enrollment-action-edit" %>
+                    <%= button_to "Desativar", class_student_path(membership, class_id: context_id), method: :delete, class: "button danger enrollment-action enrollment-action-danger", form_class: "enrollment-inline-form" %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
+</main>

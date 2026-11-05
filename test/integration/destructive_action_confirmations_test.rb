@@ -30,7 +30,9 @@ class DestructiveActionConfirmationsTest < ActionDispatch::IntegrationTest
     assert_confirmation activities_url, activity_path(@activity), "Desativar esta aula"
     assert_confirmation exercises_url, exercise_path(@exercise), "Desativar este exercício"
     assert_confirmation activity_url(@activity), activity_exercise_path(@link), "Remover este exercício da aula"
-    assert_confirmation exercise_attempts_url, exercise_attempt_path(@attempt), "Desativar esta tentativa"
+    get exercise_attempts_url
+    assert_select "button", text: "Desativar", count: 0
+    assert_select "form[action='#{exercise_attempt_path(@attempt)}']", count: 0
   end
 
   test "student leave form asks for confirmation" do
@@ -50,7 +52,8 @@ class DestructiveActionConfirmationsTest < ActionDispatch::IntegrationTest
     login(@teacher, "teacher")
 
     delete exercise_attempt_path(@attempt)
-    assert_not @attempt.reload.active?
+    assert_redirected_to root_url
+    assert @attempt.reload.active?
     delete activity_exercise_path(@link)
     assert_not @link.reload.active?
     delete exercise_path(@exercise)

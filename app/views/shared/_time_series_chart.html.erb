@@ -1,0 +1,38 @@
+<%= content_tag :figure, id: chart_id, class: "time-series-chart time-series-chart--#{chart[:type]}", data: { controller: "time-series-chart", time_series_chart_chart_value: chart.to_json } do %>
+	<figcaption class="time-series-chart-caption">
+		<h3 class="time-series-chart-title"><%= chart[:title] %></h3>
+		<p class="time-series-chart-description"><%= chart[:description] %></p>
+	</figcaption>
+
+	<% if chart[:weeks].empty? %>
+		<p class="time-series-chart-empty-message" role="status"><%= empty_message %></p>
+	<% else %>
+		<div class="time-series-chart-canvas" data-time-series-chart-target="canvas"></div>
+		<ul class="time-series-chart-legend" data-time-series-chart-target="legend" aria-label="Legenda do gráfico"></ul>
+		<details class="time-series-chart-table" data-time-series-chart-target="table" open>
+			<summary>Ver valores em tabela</summary>
+			<div class="time-series-chart-table-scroll">
+				<table>
+					<caption class="time-series-chart-sr-only"><%= chart[:title] %></caption>
+					<thead>
+						<tr>
+							<th scope="col">Semana</th>
+							<% chart[:series].each do |series| %><th scope="col"><%= series[:label] %></th><% end %>
+						</tr>
+					</thead>
+					<tbody>
+						<% chart[:weeks].each_with_index do |week, index| %>
+							<tr>
+								<th scope="row"><%= week[:full] %></th>
+								<% chart[:series].each do |series| %>
+									<% value = series[:values][index] %>
+									<td class="<%= "time-series-chart-no-data" if value.nil? %>"><%= time_series_cell(value, chart[:unit]) %></td>
+								<% end %>
+							</tr>
+						<% end %>
+					</tbody>
+				</table>
+			</div>
+		</details>
+	<% end %>
+<% end %>

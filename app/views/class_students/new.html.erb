@@ -1,1 +1,7 @@
-<main><h1>Nova matrícula</h1><%= render "form", class_student: @class_student, students: @students, school_classes: @school_classes %></main>
+<main class="simple-form-page">
+  <header class="simple-form-header">
+    <span class="simple-form-badge">Matrícula</span>
+    <h1>Nova matrícula</h1>
+  </header>
+  <%= render "form", class_student: @class_student, students: @students, school_classes: @school_classes %>
+</main>

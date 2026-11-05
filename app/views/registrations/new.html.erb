@@ -1,12 +1,35 @@
-<main>
-  <h1>Cadastro de <%= @role == "teacher" ? "professor" : "aluno" %></h1>
-  <%= form_with model: @user, scope: :registration, url: register_path(@role) do |form| %>
-    <%= render "shared/errors", record: @user %>
-    <%= form.label :name, "Nome" %><%= form.text_field :name, required: true, maxlength: 150 %>
-    <%= form.label :username, "Usuário" %><%= form.text_field :username, required: true, maxlength: 50 %>
-    <%= form.label :email, "E-mail" %><%= form.email_field :email, required: true, maxlength: 150, value: @user.email %>
-    <%= form.label :password, "Senha" %><%= form.password_field :password, required: true %>
-    <%= form.label :password_confirmation, "Confirme a senha" %><%= form.password_field :password_confirmation, required: true %>
-    <div class="actions"><%= form.submit "Cadastrar", class: "button" %><%= link_to "Voltar", login_path(role: @role) %></div>
-  <% end %>
+<main class="auth-form-page">
+  <div class="auth-form-shell">
+    <header class="auth-form-header">
+      <span class="auth-form-badge"><%= @role == "teacher" ? "Professor" : "Aluno" %></span>
+      <h1>Cadastro de <%= @role == "teacher" ? "professor" : "aluno" %></h1>
+    </header>
+    <%= form_with model: @user, scope: :registration, url: register_path(@role), class: "auth-form-card" do |form| %>
+      <%= render "shared/errors", record: @user %>
+      <div class="auth-form-field">
+        <%= form.label :name, "Nome" %>
+        <%= form.text_field :name, required: true, maxlength: 150, autocomplete: "name" %>
+      </div>
+      <div class="auth-form-field">
+        <%= form.label :username, "Usuário" %>
+        <%= form.text_field :username, required: true, maxlength: 50, autocomplete: "username" %>
+      </div>
+      <div class="auth-form-field">
+        <%= form.label :email, "E-mail" %>
+        <%= form.email_field :email, required: true, maxlength: 150, value: @user.email, autocomplete: "email" %>
+      </div>
+      <div class="auth-form-field">
+        <%= form.label :password, "Senha" %>
+        <%= form.password_field :password, required: true, autocomplete: "new-password" %>
+      </div>
+      <div class="auth-form-field">
+        <%= form.label :password_confirmation, "Confirme a senha" %>
+        <%= form.password_field :password_confirmation, required: true, autocomplete: "new-password" %>
+      </div>
+      <div class="actions auth-form-actions">
+        <%= form.submit "Cadastrar", class: "button auth-form-submit" %>
+        <%= link_to "Voltar", login_path(role: @role), class: "auth-form-back" %>
+      </div>
+    <% end %>
+  </div>
 </main>

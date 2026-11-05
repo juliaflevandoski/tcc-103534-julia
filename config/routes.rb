@@ -33,6 +33,7 @@ Rails.application.routes.draw do
     post :memory_game_turn, on: :member
   end
   resources :student_stats
+  resource :dashboard, only: :show
 
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 

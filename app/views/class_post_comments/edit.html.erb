@@ -1,12 +1,17 @@
-<main>
-	<h1>Editar comentário</h1>
+<main class="simple-form-page">
+	<header class="simple-form-header">
+		<span class="simple-form-badge">Mural</span>
+		<h1>Editar comentário</h1>
+	</header>
 	<%= render "shared/errors", record: @comment %>
-	<%= form_with model: @comment, url: school_class_class_post_comment_path(@school_class, @class_post, @comment) do |form| %>
-		<%= form.label :body, "Comentário" %>
-		<%= form.text_area :body, required: true, maxlength: ClassPostComment::MAX_BODY_LENGTH, rows: 3 %>
-		<div class="actions">
-			<%= form.submit "Salvar" %>
-			<%= link_to "Cancelar", school_class_class_posts_path(@school_class), class: "button" %>
+	<%= form_with model: @comment, url: school_class_class_post_comment_path(@school_class, @class_post, @comment), class: "simple-form-card" do |form| %>
+		<div class="simple-form-field">
+			<%= form.label :body, "Comentário" %>
+			<%= form.text_area :body, required: true, maxlength: ClassPostComment::MAX_BODY_LENGTH, rows: 3 %>
+		</div>
+		<div class="actions simple-form-actions">
+			<%= form.submit "Salvar", class: "simple-form-submit" %>
+			<%= link_to "Cancelar", school_class_class_posts_path(@school_class), class: "button simple-form-cancel" %>
 		</div>
 	<% end %>
 </main>

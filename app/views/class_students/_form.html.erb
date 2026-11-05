@@ -1,1 +1,16 @@
-<%= render "shared/errors", record: class_student %><%= form_with model: class_student do |form| %><%= form.label :student_id, "Aluno" %><%= form.collection_select :student_id, students, :id, :name, { include_blank: true }, { required: true } %><%= form.label :class_id, "Turma" %><%= form.collection_select :class_id, school_classes, :id, :name, { include_blank: true }, { required: true } %><div class="actions"><%= form.submit "Salvar" %><%= link_to "Cancelar", class_students_path, class: "button" %></div><% end %>
+<%= render "shared/errors", record: class_student %>
+<%= form_with model: class_student, class: "simple-form-card" do |form| %>
+  <% if context_school_class %><%= hidden_field_tag :class_id, context_school_class.id, id: nil %><% end %>
+  <div class="simple-form-field">
+    <%= form.label :student_id, "Aluno" %>
+    <%= form.collection_select :student_id, students, :id, :name, { include_blank: true }, { required: true } %>
+  </div>
+  <div class="simple-form-field">
+    <%= form.label :class_id, "Turma" %>
+    <%= form.collection_select :class_id, school_classes, :id, :name, { include_blank: true }, { required: true } %>
+  </div>
+  <div class="actions simple-form-actions">
+    <%= form.submit "Salvar", class: "simple-form-submit" %>
+    <%= link_to "Cancelar", class_students_path(class_id: context_school_class&.id), class: "button simple-form-cancel" %>
+  </div>
+<% end %>

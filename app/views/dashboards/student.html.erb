@@ -1,0 +1,124 @@
+<main class="dashboard-page">
+	<header class="dashboard-header">
+		<span class="dashboard-badge">Dashboard</span>
+		<h1>Dashboard</h1>
+		<p class="dashboard-subtitle">Acompanhe seu progresso nas turmas.</p>
+	</header>
+
+	<% if @school_classes.empty? %>
+		<p class="dashboard-empty" role="status">Você ainda não está em uma turma ativa.</p>
+	<% else %>
+		<%= form_with url: dashboard_path, method: :get, class: "dashboard-filter dashboard-filter--inline" do %>
+			<div class="dashboard-field">
+				<%= label_tag :school_class_id, "Turma" %>
+				<%= select_tag :school_class_id, options_for_select([["Todas as turmas", ""]] + @school_classes.map { |school_class| [school_class.name, school_class.id] }, @selected_school_class&.id) %>
+			</div>
+			<%= submit_tag "Filtrar", class: "button dashboard-submit" %>
+		<% end %>
+
+		<section class="dashboard-class" aria-labelledby="dashboard-class-title">
+			<h2 id="dashboard-class-title" class="dashboard-class-title"><%= @selected_school_class ? @selected_school_class.name : "Todas as turmas" %></h2>
+			<% average_bar = @dashboard.average&.to_f&.clamp(0, 100) %>
+			<% completion_bar = @dashboard.exercise_completion_percentage&.to_f&.clamp(0, 100) %>
+			<dl class="dashboard-metrics dashboard-metrics--general">
+				<div class="dashboard-metric dashboard-metric--classes"><dt>Turmas</dt><dd><%= @dashboard.classes_count %></dd></div>
+				<div class="dashboard-metric dashboard-metric--activities"><dt>Aulas concluídas</dt><dd><%= @dashboard.lessons_completed %> / <%= @dashboard.lessons_available %></dd><dd class="dashboard-metric-note">concluídas / disponíveis</dd></div>
+				<div class="dashboard-metric dashboard-metric--exercises"><dt>Exercícios realizados</dt><dd><%= @dashboard.exercises_completed %> / <%= @dashboard.exercises_available %></dd><dd class="dashboard-metric-note">realizados / disponíveis</dd></div>
+			</dl>
+			<dl class="dashboard-metrics dashboard-metrics--performance">
+				<div class="dashboard-metric dashboard-metric--average"><dt>Média de desempenho</dt><dd><%= @dashboard.average.nil? ? "—" : number_to_percentage(@dashboard.average, precision: 1) %></dd><% unless average_bar.nil? %><dd class="dashboard-progress-wrap"><progress class="dashboard-progress" max="100" value="<%= average_bar %>" aria-label="Média de desempenho"><%= number_to_percentage(@dashboard.average, precision: 1) %></progress></dd><% end %><dd class="dashboard-metric-note">Média das suas notas oficiais</dd></div>
+				<div class="dashboard-metric dashboard-metric--completion"><dt>Conclusão dos exercícios</dt><dd><%= @dashboard.exercise_completion_percentage.nil? ? "—" : number_to_percentage(@dashboard.exercise_completion_percentage, precision: 1) %></dd><% unless completion_bar.nil? %><dd class="dashboard-progress-wrap"><progress class="dashboard-progress" max="100" value="<%= completion_bar %>" aria-label="Conclusão dos exercícios"><%= number_to_percentage(@dashboard.exercise_completion_percentage, precision: 1) %></progress></dd><% end %><dd class="dashboard-metric-note">Exercícios com nota oficial entre os disponíveis</dd></div>
+			</dl>
+			<p class="dashboard-link"><%= link_to "Meus resultados", exercise_attempts_path(school_class_id: @selected_school_class&.id), class: "button dashboard-results-link" %></p>
+		</section>
+
+		<section class="dashboard-gamification" aria-labelledby="dashboard-gamification-title">
+			<div class="dashboard-gamification-heading">
+				<h2 id="dashboard-gamification-title">Seu progresso geral</h2>
+				<p class="dashboard-gamification-scope">O XP e o nível valem para toda a plataforma e não mudam com a turma selecionada.</p>
+			</div>
+			<dl class="dashboard-gamification-stats">
+				<div><dt>Nível</dt><dd class="dashboard-gamification-level"><%= @level_info.level %></dd></div>
+				<div><dt>XP total</dt><dd><%= @level_info.total_xp %></dd></div>
+			</dl>
+			<div class="dashboard-gamification-progress">
+				<progress class="dashboard-progress" max="100" value="<%= @level_info.percent.round %>" aria-label="Progresso de XP para o próximo nível"><%= @level_info.percent.round %>%</progress>
+				<p class="dashboard-metric-note"><%= @level_info.xp_in_level %> / <%= StudentLevel::XP_PER_LEVEL %> XP neste nível · faltam <strong><%= @level_info.xp_for_next %> XP</strong> para o nível <%= @level_info.level + 1 %></p>
+			</div>
+		</section>
+
+		<% if @selected_school_class.nil? %>
+			<section class="dashboard-progress-section" aria-labelledby="dashboard-class-progress-title">
+				<h2 id="dashboard-class-progress-title">Progresso por turma</h2>
+				<ul class="dashboard-progress-list dashboard-progress-list--classes">
+					<% @dashboard.classes.each do |class_progress| %>
+						<li class="dashboard-progress-card" data-school-class-id="<%= class_progress.school_class.id %>">
+							<h3><%= class_progress.school_class.name %></h3>
+							<p class="dashboard-progress-detail"><%= class_progress.lessons_completed %> / <%= class_progress.lessons_available %> aulas concluídas</p>
+							<p class="dashboard-progress-detail"><%= class_progress.exercises_completed %> / <%= class_progress.exercises_available %> exercícios realizados</p>
+							<% completion = class_progress.exercise_completion_percentage %>
+							<p class="dashboard-progress-detail">Conclusão: <strong><%= completion.nil? ? "—" : number_to_percentage(completion, precision: 1) %></strong></p>
+							<% unless completion.nil? %><progress class="dashboard-progress" max="100" value="<%= completion.clamp(0, 100) %>" aria-label="Conclusão dos exercícios em <%= class_progress.school_class.name %>"><%= number_to_percentage(completion, precision: 1) %></progress><% end %>
+							<p class="dashboard-progress-detail">Média: <strong><%= class_progress.average.nil? ? "—" : number_to_percentage(class_progress.average, precision: 1) %></strong></p>
+						</li>
+					<% end %>
+				</ul>
+			</section>
+		<% end %>
+
+		<section class="dashboard-progress-section" aria-labelledby="dashboard-lesson-progress-title">
+			<h2 id="dashboard-lesson-progress-title">Progresso por aula</h2>
+			<% if @dashboard.classes.all? { |class_progress| class_progress.lessons.empty? } %>
+				<p class="dashboard-empty" role="status">Nenhuma aula publicada disponível.</p>
+			<% else %>
+				<% @dashboard.classes.each do |class_progress| %>
+					<% next if class_progress.lessons.empty? %>
+					<div class="dashboard-lesson-group" data-school-class-id="<%= class_progress.school_class.id %>">
+						<% unless @selected_school_class %><h3><%= class_progress.school_class.name %></h3><% end %>
+						<ul class="dashboard-progress-list dashboard-progress-list--lessons">
+							<% class_progress.lessons.each do |lesson| %>
+								<li class="dashboard-progress-card dashboard-student-lesson" data-activity-id="<%= lesson.activity.id %>">
+									<div class="dashboard-lesson-head">
+										<%= link_to lesson.activity.title, activity_path(lesson.activity), class: "dashboard-lesson-link" %>
+										<span class="dashboard-lesson-status dashboard-lesson-status--<%= lesson.completed ? "done" : "pending" %>"><%= lesson.completed ? "Concluída" : "Pendente" %></span>
+									</div>
+									<p class="dashboard-progress-detail"><%= class_progress.school_class.name %> · <%= lesson.exercises_completed %> / <%= lesson.exercises_available %> exercícios realizados</p>
+									<% if lesson.completion_percentage.nil? %>
+										<p class="dashboard-progress-detail">Sem exercícios nesta aula.</p>
+									<% else %>
+										<progress class="dashboard-progress" max="100" value="<%= lesson.completion_percentage.clamp(0, 100) %>" aria-label="Exercícios realizados em <%= lesson.activity.title %>"><%= number_to_percentage(lesson.completion_percentage, precision: 0) %></progress>
+									<% end %>
+								</li>
+							<% end %>
+						</ul>
+					</div>
+				<% end %>
+			<% end %>
+		</section>
+
+		<section class="dashboard-progress-section dashboard-evolution" aria-labelledby="dashboard-evolution-title">
+			<h2 id="dashboard-evolution-title">Sua evolução</h2>
+			<p class="dashboard-evolution-intro">Acompanhe, semana a semana, suas notas oficiais (primeira tentativa de cada exercício) <%= @selected_school_class ? "na turma #{@selected_school_class.name}" : "em todas as turmas" %>. Semanas sem exercícios novos repetem o último valor.</p>
+			<%= time_series_chart(
+				id: "student-performance-chart",
+				type: "line",
+				unit: "percent",
+				title: "Evolução do desempenho",
+				description: "Média acumulada das suas notas oficiais até cada semana.",
+				weeks: @series.weeks,
+				series: [ { label: "Média acumulada", metric: :cumulative_average } ],
+				empty_message: "Você ainda não tem tentativas oficiais. Quando concluir exercícios, sua evolução aparecerá aqui."
+			) %>
+			<%= time_series_chart(
+				id: "student-exercises-chart",
+				type: "line",
+				unit: "count",
+				title: "Exercícios realizados",
+				description: "Total acumulado de exercícios com tentativa oficial até cada semana.",
+				weeks: @series.weeks,
+				series: [ { label: "Exercícios realizados (acumulado)", metric: :cumulative_attempts_count } ],
+				empty_message: "Você ainda não tem tentativas oficiais. Quando concluir exercícios, sua evolução aparecerá aqui."
+			) %>
+		</section>
+	<% end %>
+</main>

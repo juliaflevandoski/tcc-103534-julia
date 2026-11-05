@@ -19,7 +19,7 @@ class ClassActivityShortcutsTest < ActionDispatch::IntegrationTest
     get school_class_url(@school_class)
     assert_select ".school-class-show-actions a[href='#{new_activity_path(class_id: @school_class.id)}']", text: "Nova aula", count: 1
     assert_select ".school-class-show-actions a[href='#{edit_school_class_path(@school_class)}']", text: "Editar", count: 1
-    assert_select ".school-class-show-actions a[href='#{class_students_path}']", text: "Gerenciar alunos", count: 1
+    assert_select ".school-class-show-actions a[href='#{class_students_path(class_id: @school_class.id)}']", text: "Gerenciar alunos", count: 1
     assert_select ".school-class-show-actions a[href='#{school_class_class_posts_path(@school_class)}']", text: "Mural", count: 1
     delete logout_url
 
@@ -28,7 +28,7 @@ class ClassActivityShortcutsTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".school-class-show-actions a[href='#{new_activity_path(class_id: @school_class.id)}']", count: 0
     assert_select ".school-class-show-actions a[href='#{edit_school_class_path(@school_class)}']", count: 0
-    assert_select ".school-class-show-actions a[href='#{class_students_path}']", count: 0
+    assert_select ".school-class-show-actions a[href='#{class_students_path(class_id: @school_class.id)}']", count: 0
     assert_select ".school-class-show-actions a[href='#{school_class_class_posts_path(@school_class)}']", text: "Mural", count: 1
   end
 

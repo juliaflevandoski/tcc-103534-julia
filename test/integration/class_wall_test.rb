@@ -48,6 +48,60 @@ class ClassWallTest < ActionDispatch::IntegrationTest
     assert newer.persisted?
   end
 
+  test "wall header shows class name and subtitle to teacher and student, form only for teacher" do
+    login(@teacher)
+    get wall
+    assert_select ".class-wall-page .class-wall-badge", text: "Mural"
+    assert_select ".class-wall-page h1", text: @school_class.name
+    assert_select ".class-wall-subtitle", text: "Publicações e comentários da turma"
+    assert_select ".class-wall-new-post h2", text: "Nova publicação"
+    assert_select "form[action='#{wall}'] textarea[name='class_post[body]'][required][maxlength='2000']", count: 1
+
+    login(@student)
+    get wall
+    assert_select ".class-wall-header a[href='#{school_class_path(@school_class)}']", text: "Voltar à turma", count: 1
+    assert_select ".class-wall-new-post", count: 0
+  end
+
+  test "wall cards show posts, comments, empty states and permitted actions" do
+    @post.comments.create!(author: @student, body: "Comentário do aluno")
+    empty_post = @school_class.class_posts.create!(body: "Sem comentários")
+
+    login(@student)
+    get wall
+    assert_select "article#class_post_#{@post.id}.class-wall-post .class-wall-avatar"
+    assert_select "article#class_post_#{@post.id} .class-wall-comment", count: 1
+    assert_select "article#class_post_#{empty_post.id} .class-wall-comments-empty", text: "Ainda não há comentários."
+    assert_select "article#class_post_#{@post.id} .class-wall-item-actions", count: 1
+    assert_select "article#class_post_#{@post.id} > .class-wall-post-header .class-wall-item-actions", count: 0
+
+    login(@teacher)
+    get wall
+    assert_select "article#class_post_#{@post.id} > .class-wall-post-header .class-wall-item-actions a", text: "Editar", count: 1
+    assert_select "form[data-turbo-confirm='Excluir esta publicação?']", minimum: 1
+    assert_select "form[data-turbo-confirm='Excluir este comentário?']", minimum: 1
+  end
+
+  test "empty wall shows a friendly message" do
+    ClassPost.update_all(active: false)
+    login(@student)
+    get wall
+    assert_select ".class-wall-empty", text: /Nenhuma publicação no mural ainda\./
+  end
+
+  test "comment label is associated with its textarea" do
+    login(@teacher)
+    get wall
+
+    assert_select "label[for='comment_body_#{@post.id}']", text: "Comentar", count: 1
+    assert_select "textarea#comment_body_#{@post.id}[name='class_post_comment[body]']", count: 1
+
+    post school_class_class_post_comments_path(@school_class, @post), params: { class_post_comment: { body: "  " } }
+    assert_response :unprocessable_entity
+    assert_select "label[for='comment_body_#{@post.id}']", text: "Comentar", count: 1
+    assert_select "textarea#comment_body_#{@post.id}", count: 1
+  end
+
   test "student does not see post management or the new post form" do
     login(@student)
     get wall

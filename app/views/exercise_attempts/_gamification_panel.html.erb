@@ -1,0 +1,41 @@
+<section class="gamification-panel" aria-labelledby="gamification-title">
+	<header class="gamification-header">
+		<span class="gamification-trophy" aria-hidden="true">
+			<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3"/><path d="M12 13v4M9 20h6M10 17h4"/></svg>
+		</span>
+		<div class="gamification-heading">
+			<h2 id="gamification-title" class="gamification-title">Seu progresso</h2>
+			<p class="gamification-level-number"><span class="gamification-level-label">Nível</span> <strong><%= level_info.level %></strong></p>
+		</div>
+		<p class="gamification-xp"><span class="gamification-xp-label">XP total</span> <strong><%= level_info.total_xp %></strong></p>
+	</header>
+	<div class="gamification-level">
+		<progress class="gamification-progress" max="100" value="<%= level_info.percent.round %>" aria-label="Progresso para o próximo nível"><%= level_info.percent.round %>%</progress>
+		<p class="gamification-next"><%= level_info.xp_in_level %> / <%= StudentLevel::XP_PER_LEVEL %> XP neste nível · faltam <strong><%= level_info.xp_for_next %> XP</strong> para o nível <%= level_info.level + 1 %></p>
+	</div>
+	<ul class="gamification-badges">
+		<% badges.each do |badge| %>
+			<li class="gamification-badge gamification-badge--<%= badge.earned ? "earned" : "locked" %>" data-badge="<%= badge.id %>">
+				<span class="gamification-badge-icon" aria-hidden="true">
+					<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+						<% case badge.id.to_s %>
+						<% when "first_steps" %>
+							<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>
+						<% when "perfect_score" %>
+							<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>
+						<% when "mission_accomplished" %>
+							<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>
+						<% else %>
+							<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>
+						<% end %>
+					</svg>
+				</span>
+				<span class="gamification-badge-text">
+					<strong class="gamification-badge-name"><%= badge.name %></strong>
+					<span class="gamification-badge-description"><%= badge.description %></span>
+					<span class="gamification-badge-status"><%= badge.earned ? "Conquistada" : "Bloqueada" %></span>
+				</span>
+			</li>
+		<% end %>
+	</ul>
+</section>

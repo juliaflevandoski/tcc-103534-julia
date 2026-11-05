@@ -149,9 +149,9 @@
 		<p>Esta tentativa não possui feedback detalhado para exibição.</p>
 	<% end %>
 
-	<div class="attempt-result-navigation">
-		<%= link_to "Resultados", exercise_attempts_path(school_class_id: @exercise_attempt.activity_exercise.activity.class_id), class: "button" %>
-		<%= link_to "Voltar à aula", activity_path(@exercise_attempt.activity_exercise.activity), class: "button" if @return_to_activity %>
-		<%= link_to "Próximo exercício", exercise_path(@next_activity_exercise.exercise, activity_exercise_id: @next_activity_exercise.id), class: "button" if @next_activity_exercise %>
-	</div>
+	<% if @next_activity_exercise %>
+		<div class="attempt-result-navigation">
+			<%= link_to "Próximo exercício", exercise_path(@next_activity_exercise.exercise, activity_exercise_id: @next_activity_exercise.id), class: "button attempt-result-next" %>
+		</div>
+	<% end %>
 </main>

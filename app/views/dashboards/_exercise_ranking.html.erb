@@ -1,0 +1,19 @@
+<section class="dashboard-panel dashboard-ranking" aria-labelledby="<%= id %>">
+	<h3 id="<%= id %>" class="dashboard-panel-title"><%= title %></h3>
+	<% if rankings.empty? %>
+		<p class="dashboard-empty" role="status">Ainda não há notas oficiais suficientes para este ranking.</p>
+	<% else %>
+		<ol class="dashboard-ranking-list">
+			<% rankings.each do |ranking| %>
+				<li class="dashboard-ranking-item">
+					<div class="dashboard-ranking-main">
+						<strong class="dashboard-ranking-title"><%= ranking.title %></strong>
+						<span class="dashboard-ranking-activity">Aula: <%= ranking.activity.title %></span>
+						<span class="dashboard-ranking-count"><%= ranking.students_count %> <%= ranking.students_count == 1 ? "aluno com nota oficial" : "alunos com nota oficial" %></span>
+					</div>
+					<span class="dashboard-ranking-average"><%= number_to_percentage(ranking.average, precision: 1) %></span>
+				</li>
+			<% end %>
+		</ol>
+	<% end %>
+</section>

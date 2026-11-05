@@ -40,7 +40,8 @@ class OpenaiResponsesClientTest < ActiveSupport::TestCase
   end
 
   test "sends a structured output request and parses a successful JSON object" do
-    result, http = invoke(response: successful_response)
+    api_key = "test-secret-key"
+    result, http = invoke(api_key:, response: successful_response)
     request = http.requests.fetch(0)
     body = JSON.parse(request.body)
     format = body.dig("text", "format")
@@ -48,7 +49,7 @@ class OpenaiResponsesClientTest < ActiveSupport::TestCase
     assert result.success?
     assert_equal({ "questions" => [] }, result.data)
     assert_equal 200, result.http_status
-    assert_equal "Bearer test-secret-key", request["Authorization"]
+    assert_equal "Bearer #{api_key}", request["Authorization"]
     assert_equal "application/json", request["Content-Type"]
     assert_equal OpenaiResponsesClient::MODEL, body["model"]
     assert_equal "QuizDraft", format["name"]

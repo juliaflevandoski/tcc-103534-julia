@@ -29,7 +29,7 @@ class ExerciseAttemptPolicy < ApplicationPolicy
   end
 
   def destroy?
-    owner? || teacher_owns_activity?
+    owner?
   end
 
   private

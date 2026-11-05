@@ -1,1 +1,19 @@
-<%= render "shared/errors", record: activity %><%= form_with model: activity do |form| %><%= form.label :class_id, "Turma" %><%= form.collection_select :class_id, school_classes, :id, :name, include_blank: true, required: true %><%= form.label :title, "Título" %><%= form.text_field :title, required: true, maxlength: 150 %><%= form.label :published, "Publicada" %><%= form.check_box :published %><div class="actions"><%= form.submit "Salvar" %><%= link_to "Cancelar", activities_path, class: "button" %></div><% end %>
+<%= render "shared/errors", record: activity %>
+<%= form_with model: activity, class: "simple-form-card" do |form| %>
+  <div class="simple-form-field">
+    <%= form.label :class_id, "Turma" %>
+    <%= form.collection_select :class_id, school_classes, :id, :name, include_blank: true, required: true %>
+  </div>
+  <div class="simple-form-field">
+    <%= form.label :title, "Título" %>
+    <%= form.text_field :title, required: true, maxlength: 150 %>
+  </div>
+  <div class="simple-form-field simple-form-check">
+    <%= form.label :published, "Publicada" %>
+    <%= form.check_box :published %>
+  </div>
+  <div class="actions simple-form-actions">
+    <%= form.submit "Salvar", class: "simple-form-submit" %>
+    <%= link_to "Cancelar", activities_path, class: "button simple-form-cancel" %>
+  </div>
+<% end %>

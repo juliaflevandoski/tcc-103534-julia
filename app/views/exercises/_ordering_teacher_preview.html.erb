@@ -1,7 +1,5 @@
 <% object = exercise.object.deep_stringify_keys %>
-<main class="exercise-teacher-preview ordering-teacher-preview">
-	<h1><%= exercise.title %></h1>
-	<p><%= object.fetch("instructions") %></p>
+<div class="exercise-teacher-preview ordering-teacher-preview">
 	<% if object["format"] == "multiple_sentences" %>
 		<h2>Frases na ordem correta</h2>
 		<% object.fetch("sentences").each_with_index do |sentence, index| %>
@@ -25,4 +23,4 @@
 			<% end %>
 		</ol>
 	<% end %>
-</main>
+</div>

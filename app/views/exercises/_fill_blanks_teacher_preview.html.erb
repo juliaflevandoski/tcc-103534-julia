@@ -3,9 +3,7 @@
 <% blanks = object.fetch("blanks") %>
 <% marker_pattern = Exercises::ExerciseContentValidator::MARKER_PATTERN %>
 <% marker_ids = template.scan(marker_pattern).flatten.uniq %>
-<main class="exercise-teacher-preview fill-blanks-teacher-preview">
-	<h1><%= exercise.title %></h1>
-	<p>Complete as lacunas</p>
+<div class="exercise-teacher-preview fill-blanks-teacher-preview">
 	<p class="fill-blanks-text">
 		<% template.split(/(\{\{\d+\}\})/).each do |segment| %>
 			<% marker = /\A\{\{(\d+)\}\}\z/.match(segment) %>
@@ -25,4 +23,4 @@
 			</li>
 		<% end %>
 	</ol>
-</main>
+</div>

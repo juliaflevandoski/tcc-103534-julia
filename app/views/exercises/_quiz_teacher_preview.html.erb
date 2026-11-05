@@ -1,7 +1,5 @@
 <% question_type_labels = { "multiple_choice" => "Múltipla escolha", "true_false" => "Verdadeiro ou falso", "short_answer" => "Resposta curta" } %>
-<main class="exercise-teacher-preview quiz-teacher-preview">
-	<h1><%= exercise.title %></h1>
-	<p>Quiz</p>
+<div class="exercise-teacher-preview quiz-teacher-preview">
 	<ol class="quiz-questions">
 		<% exercise.object.deep_stringify_keys.fetch("questions").each_with_index do |question, index| %>
 			<li>
@@ -27,4 +25,4 @@
 			</li>
 		<% end %>
 	</ol>
-</main>
+</div>

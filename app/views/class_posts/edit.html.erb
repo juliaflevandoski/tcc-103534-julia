@@ -1,12 +1,17 @@
-<main>
-	<h1>Editar publicação</h1>
+<main class="simple-form-page">
+	<header class="simple-form-header">
+		<span class="simple-form-badge">Mural</span>
+		<h1>Editar publicação</h1>
+	</header>
 	<%= render "shared/errors", record: @class_post %>
-	<%= form_with model: @class_post, url: school_class_class_post_path(@school_class, @class_post) do |form| %>
-		<%= form.label :body, "Texto" %>
-		<%= form.text_area :body, required: true, maxlength: ClassPost::MAX_BODY_LENGTH, rows: 4 %>
-		<div class="actions">
-			<%= form.submit "Salvar" %>
-			<%= link_to "Cancelar", school_class_class_posts_path(@school_class), class: "button" %>
+	<%= form_with model: @class_post, url: school_class_class_post_path(@school_class, @class_post), class: "simple-form-card" do |form| %>
+		<div class="simple-form-field">
+			<%= form.label :body, "Texto" %>
+			<%= form.text_area :body, required: true, maxlength: ClassPost::MAX_BODY_LENGTH, rows: 4 %>
+		</div>
+		<div class="actions simple-form-actions">
+			<%= form.submit "Salvar", class: "simple-form-submit" %>
+			<%= link_to "Cancelar", school_class_class_posts_path(@school_class), class: "button simple-form-cancel" %>
 		</div>
 	<% end %>
 </main>

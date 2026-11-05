@@ -32,6 +32,7 @@
       when "activities", "activity_exercises" then :activities
       when "exercises" then current_teacher ? :exercises : :classes
       when "exercise_attempts", "student_stats" then :results
+      when "dashboards" then :dashboard
       end %>
       <div class="internal-app-shell" data-controller="sidebar-navigation">
         <aside id="internal-sidebar" class="internal-sidebar" data-sidebar-navigation-target="sidebar" aria-label="Navegação principal">
@@ -41,6 +42,10 @@
           <% end %>
           <p class="internal-profile-label"><%= current_teacher ? "Área do professor" : "Área do aluno" %></p>
           <nav class="internal-navigation" aria-label="Navegação">
+            <% dashboard_active = active_navigation == :dashboard %>
+            <%= link_to dashboard_path, class: "internal-navigation-link#{' is-active' if dashboard_active}", aria: { current: ("page" if dashboard_active) }, data: { action: "click->sidebar-navigation#closeAfterNavigate" } do %>
+              <i class="fa-solid fa-gauge-high" aria-hidden="true"></i><span>Dashboard</span>
+            <% end %>
             <% classes_active = active_navigation == :classes %>
             <%= link_to school_classes_path, class: "internal-navigation-link#{' is-active' if classes_active}", aria: { current: ("page" if classes_active) }, data: { action: "click->sidebar-navigation#closeAfterNavigate" } do %>
               <i class="fa-solid fa-chalkboard-user" aria-hidden="true"></i><span><%= current_teacher ? "Turmas" : "Minhas turmas" %></span>

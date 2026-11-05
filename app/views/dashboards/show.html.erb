@@ -1,0 +1,74 @@
+<main class="dashboard-page">
+	<header class="dashboard-header">
+		<span class="dashboard-badge">Dashboard</span>
+		<h1>Dashboard</h1>
+		<p class="dashboard-subtitle">Visão geral da turma selecionada.</p>
+	</header>
+
+	<% if @school_classes.empty? %>
+		<p class="dashboard-empty" role="status">Você ainda não possui turmas ativas.</p>
+	<% else %>
+		<%= form_with url: dashboard_path, method: :get, class: "dashboard-filter", data: { controller: "dashboard-filter", dashboard_filter_options_value: @filter_options.to_json } do %>
+			<div class="dashboard-field">
+				<%= label_tag :school_class_id, "Turma" %>
+				<%= select_tag :school_class_id, options_for_select(@school_classes.map { |school_class| [school_class.name, school_class.id] }, @selected_school_class.id), data: { dashboard_filter_target: "schoolClass", action: "change->dashboard-filter#resetActivity" } %>
+			</div>
+			<div class="dashboard-field">
+				<%= label_tag :student_id, "Aluno" %>
+				<%= select_tag :student_id, options_for_select([["Todos os alunos", ""]] + @students.map { |student| [student.name, student.id] }, @selected_student&.id), data: { dashboard_filter_target: "student" } %>
+			</div>
+			<div class="dashboard-field">
+				<%= label_tag :activity_id, "Aula" %>
+				<%= select_tag :activity_id, options_for_select([["Todas as aulas", ""]] + @activities.map { |activity| [activity.published? ? activity.title : "#{activity.title} (rascunho)", activity.id] }, @selected_activity&.id), data: { dashboard_filter_target: "activity", action: "change->dashboard-filter#resetExercise" } %>
+			</div>
+			<div class="dashboard-field">
+				<%= label_tag :activity_exercise_id, "Exercício" %>
+				<%= select_tag :activity_exercise_id, options_for_select([["Todos os exercícios", ""]] + @activity_exercises.map { |link| ["#{link.exercise.title} — #{link.activity.title}", link.id] }, @selected_activity_exercise&.id), data: { dashboard_filter_target: "exercise" } %>
+			</div>
+			<%= submit_tag "Filtrar", class: "button dashboard-submit" %>
+		<% end %>
+
+		<section class="dashboard-class" aria-labelledby="dashboard-class-title">
+			<h2 id="dashboard-class-title" class="dashboard-class-title"><%= @selected_school_class.name %></h2>
+			<% if @selected_activity %><p class="dashboard-filter-note" role="status">Dados filtrados pela aula: <strong><%= @selected_activity.title %></strong><%= " (rascunho)" unless @selected_activity.published? %></p><% end %>
+			<% if @selected_student %><p class="dashboard-filter-note" role="status">Dados filtrados pelo aluno: <strong><%= @selected_student.name %></strong></p><% end %>
+			<% if @selected_activity_exercise %><p class="dashboard-filter-note" role="status">Dados filtrados pelo exercício: <strong><%= @selected_activity_exercise.exercise.title %></strong> (aula: <%= @selected_activity_exercise.activity.title %>)</p><% end %>
+			<% average_bar = @dashboard.class_average&.to_f&.clamp(0, 100) %>
+			<% completion_bar = @dashboard.exercise_completion_percentage&.to_f&.clamp(0, 100) %>
+			<dl class="dashboard-metrics dashboard-metrics--general">
+				<div class="dashboard-metric dashboard-metric--students"><dt>Alunos com matrícula ativa</dt><dd><%= @dashboard.students_count %></dd></div>
+				<div class="dashboard-metric dashboard-metric--activities"><dt>Aulas ativas</dt><dd><%= @dashboard.activities_count %></dd></div>
+				<div class="dashboard-metric dashboard-metric--exercises"><dt>Exercícios vinculados às aulas</dt><dd><%= @dashboard.exercise_links_count %></dd><dd class="dashboard-metric-note"><%= @dashboard.distinct_exercises_count %> <%= @dashboard.distinct_exercises_count == 1 ? "exercício distinto" : "exercícios distintos" %></dd></div>
+			</dl>
+			<dl class="dashboard-metrics dashboard-metrics--performance">
+				<div class="dashboard-metric dashboard-metric--average"><dt>Média de desempenho da turma</dt><dd><%= @dashboard.class_average.nil? ? "—" : number_to_percentage(@dashboard.class_average, precision: 1) %></dd><% unless average_bar.nil? %><dd class="dashboard-progress-wrap"><progress class="dashboard-progress" max="100" value="<%= average_bar %>" aria-label="Média de desempenho da turma"><%= number_to_percentage(@dashboard.class_average, precision: 1) %></progress></dd><% end %><dd class="dashboard-metric-note">Média das médias oficiais dos alunos</dd></div>
+				<div class="dashboard-metric dashboard-metric--completion"><dt>Conclusão dos exercícios</dt><dd><%= @dashboard.exercise_completion_percentage.nil? ? "—" : number_to_percentage(@dashboard.exercise_completion_percentage, precision: 1) %></dd><% unless completion_bar.nil? %><dd class="dashboard-progress-wrap"><progress class="dashboard-progress" max="100" value="<%= completion_bar %>" aria-label="Conclusão dos exercícios"><%= number_to_percentage(@dashboard.exercise_completion_percentage, precision: 1) %></progress></dd><% end %><dd class="dashboard-metric-note"><%= @dashboard.completed_exercises %> / <%= @dashboard.possible_exercises %> resultados aluno-exercício</dd></div>
+			</dl>
+			<section class="dashboard-panel dashboard-lessons" aria-labelledby="dashboard-lessons-title">
+				<h3 id="dashboard-lessons-title" class="dashboard-panel-title">Conclusão por aula</h3>
+				<% if @dashboard.lesson_completions.empty? %>
+					<p class="dashboard-empty" role="status">Esta turma ainda não possui aulas ativas.</p>
+				<% else %>
+					<ul class="dashboard-lesson-list">
+						<% @dashboard.lesson_completions.each do |lesson| %>
+							<% lesson_bar = lesson.percentage&.to_f&.clamp(0, 100) %>
+							<li class="dashboard-lesson">
+								<div class="dashboard-lesson-head">
+									<strong class="dashboard-lesson-title"><%= lesson.activity.title %><% unless lesson.activity.published? %> <span class="dashboard-lesson-draft">Rascunho</span><% end %></strong>
+									<span class="dashboard-lesson-percentage"><%= lesson.percentage.nil? ? "—" : number_to_percentage(lesson.percentage, precision: 1) %></span>
+								</div>
+								<% unless lesson_bar.nil? %><progress class="dashboard-progress" max="100" value="<%= lesson_bar %>" aria-label="Conclusão da aula <%= lesson.activity.title %>"><%= number_to_percentage(lesson.percentage, precision: 1) %></progress><% end %>
+								<span class="dashboard-lesson-count"><% if lesson.activity.published? %><%= lesson.completed_count %> de <%= lesson.eligible_count %> <%= lesson.eligible_count == 1 ? "aluno concluiu" : "alunos concluíram" %><% else %>Aula ainda não publicada para os alunos<% end %></span>
+							</li>
+						<% end %>
+					</ul>
+				<% end %>
+			</section>
+			<div class="dashboard-rankings">
+				<%= render "exercise_ranking", id: "dashboard-best-title", title: "Exercícios com melhor desempenho", rankings: @dashboard.best_exercises %>
+				<%= render "exercise_ranking", id: "dashboard-worst-title", title: "Exercícios com menor desempenho", rankings: @dashboard.worst_exercises %>
+			</div>
+			<p class="dashboard-link"><%= link_to "Ver resultados da turma", exercise_attempts_path(school_class_id: @selected_school_class.id), class: "button dashboard-results-link" %></p>
+		</section>
+	<% end %>
+</main>

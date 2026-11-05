@@ -1,1 +1,19 @@
-<%= render "shared/errors", record: school_class %><%= form_with model: school_class do |form| %><%= form.label :name, "Nome" %><%= form.text_field :name, required: true, maxlength: 50 %><%= form.label :description, "Descrição" %><%= form.text_area :description, maxlength: 255 %><%= form.label :xp_points, "XP da turma" %><%= form.number_field :xp_points, min: 0 %><div class="actions"><%= form.submit "Salvar" %><%= link_to "Cancelar", school_classes_path, class: "button" %></div><% end %>
+<%= render "shared/errors", record: school_class %>
+<%= form_with model: school_class, class: "simple-form-card" do |form| %>
+  <div class="simple-form-field">
+    <%= form.label :name, "Nome" %>
+    <%= form.text_field :name, required: true, maxlength: 50 %>
+  </div>
+  <div class="simple-form-field">
+    <%= form.label :description, "Descrição" %>
+    <%= form.text_area :description, maxlength: 255 %>
+  </div>
+  <div class="simple-form-field">
+    <%= form.label :xp_points, "XP da turma" %>
+    <%= form.number_field :xp_points, min: 0 %>
+  </div>
+  <div class="actions simple-form-actions">
+    <%= form.submit "Salvar", class: "simple-form-submit" %>
+    <%= link_to "Cancelar", school_classes_path, class: "button simple-form-cancel" %>
+  </div>
+<% end %>

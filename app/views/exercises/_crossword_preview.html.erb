@@ -1,5 +1,3 @@
-<h1><%= exercise.title %></h1>
-<p><%= crossword["instructions"] %></p>
 <div class="crossword-board-scroll">
   <table class="crossword-grid crossword-teacher-grid" aria-label="Prévia da cruzadinha com respostas">
     <% crossword.fetch("grid").fetch("cells").each do |row| %>

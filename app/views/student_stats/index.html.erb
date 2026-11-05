@@ -4,7 +4,7 @@
 		<thead><tr><th>Aluno</th><th>XP</th><th>Nível</th></tr></thead>
 		<tbody>
 			<% @student_stats.each do |stat| %>
-				<tr><td><%= stat.student.name %></td><td><%= stat.xp %></td><td><%= stat.level %></td></tr>
+				<tr><td><%= stat.student.name %></td><td><%= stat.xp %></td><td><%= StudentLevel.call(stat.xp).level %></td></tr>
 			<% end %>
 		</tbody>
 	</table>

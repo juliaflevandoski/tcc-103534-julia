@@ -1,1 +1,1 @@
-<main><h1>Progresso de <%= @student_stat.student.name %></h1><p>XP: <%= @student_stat.xp %></p><p>Nível: <%= @student_stat.level %></p></main>
+<main><h1>Progresso de <%= @student_stat.student.name %></h1><p>XP: <%= @student_stat.xp %></p><p>Nível: <%= StudentLevel.call(@student_stat.xp).level %></p></main>

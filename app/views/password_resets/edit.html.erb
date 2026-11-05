@@ -1,9 +1,22 @@
-<main>
-  <h1>Definir nova senha</h1>
-  <%= render "shared/errors", record: @user %>
-  <%= form_with url: edit_password_reset_path(@role, @token), method: :patch, scope: :user do |form| %>
-    <%= form.label :password, "Nova senha" %><%= form.password_field :password, required: true %>
-    <%= form.label :password_confirmation, "Confirme a nova senha" %><%= form.password_field :password_confirmation, required: true %>
-    <div class="actions"><%= form.submit "Redefinir senha", class: "button" %></div>
-  <% end %>
+<main class="auth-form-page">
+  <div class="auth-form-shell">
+    <header class="auth-form-header">
+      <span class="auth-form-badge">Segurança</span>
+      <h1>Redefinir senha</h1>
+    </header>
+    <%= form_with url: edit_password_reset_path(@role, @token), method: :patch, scope: :user, class: "auth-form-card" do |form| %>
+      <%= render "shared/errors", record: @user %>
+      <div class="auth-form-field">
+        <%= form.label :password, "Nova senha" %>
+        <%= form.password_field :password, required: true, autocomplete: "new-password" %>
+      </div>
+      <div class="auth-form-field">
+        <%= form.label :password_confirmation, "Confirme a nova senha" %>
+        <%= form.password_field :password_confirmation, required: true, autocomplete: "new-password" %>
+      </div>
+      <div class="actions auth-form-actions">
+        <%= form.submit "Redefinir senha", class: "button auth-form-submit" %>
+      </div>
+    <% end %>
+  </div>
 </main>

@@ -15,7 +15,7 @@
 			<% if current_teacher %>
 				<%= link_to "Nova aula", new_activity_path(class_id: @school_class.id), class: "button school-class-show-action school-class-show-primary" %>
 				<%= link_to "Editar", edit_school_class_path(@school_class), class: "button school-class-show-action school-class-show-secondary" %>
-				<%= link_to "Gerenciar alunos", class_students_path, class: "button school-class-show-action school-class-show-secondary" %>
+				<%= link_to "Gerenciar alunos", class_students_path(class_id: @school_class.id), class: "button school-class-show-action school-class-show-secondary" %>
 			<% end %>
 			<%= link_to "Mural", school_class_class_posts_path(@school_class), class: "button school-class-show-action#{current_teacher ? ' school-class-show-secondary' : ' school-class-show-primary'}" %>
 		</nav>

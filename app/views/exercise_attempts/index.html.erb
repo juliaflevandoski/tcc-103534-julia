@@ -1,27 +1,31 @@
-<main class="results-page">
-	<div class="toolbar"><h1>Resultados</h1></div>
+<main class="results-page results-index-page">
+	<header class="results-index-header">
+		<span class="results-index-badge">Resultados</span>
+		<h1>Resultados</h1>
+		<p class="results-index-subtitle"><%= current_student ? "Acompanhe suas notas, tentativas e o progresso nos exercícios." : "Acompanhe o desempenho dos alunos nos exercícios de cada turma." %></p>
+	</header>
 	<%= form_with url: exercise_attempts_path, method: :get, class: "results-filter" do %>
-		<%= label_tag :school_class_id, "Turma" %>
-		<%= select_tag :school_class_id, options_for_select([["Todas as turmas", ""]] + @school_classes.map { |school_class| [school_class.name, school_class.id] }, @selected_school_class&.id) %>
-		<%= submit_tag "Filtrar", class: "button" %>
+		<div class="results-index-field">
+			<%= label_tag :school_class_id, "Turma" %>
+			<%= select_tag :school_class_id, options_for_select([["Todas as turmas", ""]] + @school_classes.map { |school_class| [school_class.name, school_class.id] }, @selected_school_class&.id) %>
+		</div>
+		<%= submit_tag "Filtrar", class: "button results-index-submit" %>
 	<% end %>
 
 	<% if current_student %>
-		<% if @student_stat %>
-			<p class="results-xp-summary">XP: <strong><%= @student_stat.xp %></strong> <span aria-hidden="true">|</span> Nível: <strong><%= @student_stat.level %></strong></p>
-		<% end %>
+		<%= render "gamification_panel", level_info: @level_info, badges: @badges %>
 		<% if @result_sections.empty? %><p class="results-empty" role="status">Você ainda não está em uma turma ativa.</p><% end %>
 	<% elsif @result_sections.empty? %>
 		<p class="results-empty" role="status">Não há turmas ativas para consultar.</p>
 	<% end %>
 
 	<% @result_sections.each do |section| %>
-		<section class="results-class results-class-card">
+		<section class="results-class results-class-card<%= " results-class--teacher" if current_teacher %><%= " results-class--teacher results-class--student" if current_student %>">
 			<h2 class="results-class-title"><%= section.fetch(:school_class).name %></h2>
 			<% if current_teacher %>
 				<div class="results-overview">
 					<p class="results-metric"><span class="results-metric-label">Média das médias individuais</span><strong class="results-metric-value"><%= section[:class_average].nil? ? "Sem notas elegíveis" : number_to_percentage(section[:class_average], precision: 1) %></strong></p>
-					<p class="results-metric"><span class="results-metric-label">Exercícios concluídos</span><strong class="results-metric-value"><%= section[:completed_exercises] %> / <%= section[:possible_exercises] %></strong><span>resultados aluno-exercício</span></p>
+					<p class="results-metric"><span class="results-metric-label">Exercícios concluídos</span><strong class="results-metric-value"><%= section[:completed_exercises] %> / <%= section[:possible_exercises] %></strong><span class="results-metric-note">resultados aluno-exercício</span></p>
 				</div>
 				<div class="student-results-summary-wrap">
 				<table class="student-results-summary">

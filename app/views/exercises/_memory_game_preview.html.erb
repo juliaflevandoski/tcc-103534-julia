@@ -1,6 +1,4 @@
-<h1><%= exercise.title %></h1>
-<p><%= exercise.object.fetch("instructions") %></p>
-<p>
+<p class="memory-preview-meta">
 	<% pair_labels = { "word_word" => "Palavra ↔ Palavra", "word_image" => "Palavra ↔ Imagem", "image_image" => "Imagem ↔ Imagem" } %>
 	Tipo: <%= pair_labels.fetch(exercise.object.fetch("pair_type")) %>
 	· <%= exercise.object.fetch("pairs").length %> pares
