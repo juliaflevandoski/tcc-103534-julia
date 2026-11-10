@@ -14,7 +14,10 @@ class SessionsController < ApplicationController
       sign_in(user)
       redirect_to(return_to || root_path, notice: "Login realizado com sucesso.")
     else
-      redirect_to login_path(role: role), alert: "Usuário ou senha inválidos."
+      @role = role
+      @username = params[:username]
+      flash.now[:alert] = "Usuário ou senha inválidos."
+      render :new, status: :unprocessable_entity
     end
   end
 

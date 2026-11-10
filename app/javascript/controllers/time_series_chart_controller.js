@@ -15,6 +15,33 @@ export default class extends Controller {
     this.canvasTarget.innerHTML = buildSvg(chart, { title: `${uid}-title`, description: `${uid}-description` })
     this.renderLegend(chart)
     if (this.hasTableTarget) this.tableTarget.open = false
+    this.observeScroll(chart)
+  }
+
+  disconnect() {
+    this.resizeObserver?.disconnect()
+  }
+
+  // A área só rola em telas estreitas; fora disso não vira região nem parada de teclado.
+  observeScroll(chart) {
+    const canvas = this.canvasTarget
+    const update = () => this.markScrollable(canvas.scrollWidth > canvas.clientWidth + 1, chart)
+    this.resizeObserver = new ResizeObserver(update)
+    this.resizeObserver.observe(canvas)
+    update()
+  }
+
+  markScrollable(scrolls, chart) {
+    const canvas = this.canvasTarget
+    if (scrolls) {
+      canvas.setAttribute("role", "region")
+      canvas.setAttribute("aria-label", `${chart.title} (rolagem horizontal)`)
+      canvas.tabIndex = 0
+    } else {
+      canvas.removeAttribute("role")
+      canvas.removeAttribute("aria-label")
+      canvas.removeAttribute("tabindex")
+    }
   }
 
   renderLegend(chart) {

@@ -54,7 +54,9 @@ class CrosswordAiGenerationTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "dialog[data-exercise-form-target='crosswordAiModal']"
-    assert_select "button[data-action='exercise-form#openCrosswordAiModal']"
+    assert_select "button.exercise-ai-open[data-action='exercise-form#openCrosswordAiModal']", text: "Gerar com IA" do
+      assert_select "i.fa-solid.fa-wand-magic-sparkles[aria-hidden='true']"
+    end
     assert_select "input[data-exercise-form-target='crosswordAiTopic'][required]", count: 0
     assert_select "select[data-exercise-form-target='crosswordAiDifficulty'][required]", count: 0
     assert_select "input[data-exercise-form-target='crosswordAiWordCount'][required]", count: 0

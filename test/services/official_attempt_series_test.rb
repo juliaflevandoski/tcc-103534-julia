@@ -164,6 +164,126 @@ class OfficialAttemptSeriesTest < ActiveSupport::TestCase
     assert_raises(ArgumentError) { OfficialAttemptSeries.call(user: outsider, school_classes: [ @class_a ]) }
   end
 
+  test "activity filter scopes all weekly metrics before constructing the axis" do
+    result = OfficialAttemptSeries.call(user: @teacher, school_classes: [ @class_a ], activity: @lesson_a1)
+
+    assert_equal [ W1, W2 ], result.weeks.map(&:week_start)
+    assert_equal [ 2, 1 ], result.weeks.map(&:attempts_count)
+    assert_equal [ 2, 3 ], result.weeks.map(&:cumulative_attempts_count)
+    assert_equal [ 2, 1 ], result.weeks.map(&:distinct_students_count)
+    assert_equal [ 100.0, 0.0 ], result.weeks.map(&:average)
+    assert_in_delta 200.0 / 3, result.weeks.last.cumulative_average
+  end
+
+  test "activity exercise filter works with or without its activity" do
+    with_activity = OfficialAttemptSeries.call(
+      user: @teacher, school_classes: [ @class_a ], activity: @lesson_a1, activity_exercise: @a1_x
+    )
+    without_activity = OfficialAttemptSeries.call(
+      user: @teacher, school_classes: [ @class_a ], activity_exercise: @a1_x
+    )
+
+    assert_equal with_activity.weeks, without_activity.weeks
+    assert_equal [ W1 ], without_activity.weeks.map(&:week_start)
+    assert_equal [ 2 ], without_activity.weeks.map(&:attempts_count)
+    assert_equal [ 2 ], without_activity.weeks.map(&:distinct_students_count)
+    assert_equal [ 100.0 ], without_activity.weeks.map(&:average)
+  end
+
+  test "student activity and activity exercise filters combine" do
+    result = OfficialAttemptSeries.call(
+      user: @teacher, school_classes: [ @class_a ],
+      student: @s1, activity: @lesson_a1, activity_exercise: @a1_y
+    )
+
+    assert_equal [ W2 ], result.weeks.map(&:week_start)
+    assert_equal [ 1 ], result.weeks.map(&:attempts_count)
+    assert_equal [ 1 ], result.weeks.map(&:distinct_students_count)
+    assert_equal [ 0.0 ], result.weeks.map(&:average)
+    assert_equal [ 0.0 ], result.weeks.map(&:cumulative_average)
+  end
+
+  test "exercise filter distinguishes the same exercise in different lessons" do
+    reused = @lesson_a2.activity_exercises.create!(exercise: @a1_x.exercise, position: 2, points: 10)
+    submit(reused, @s1, WRONG, at(W3, 1))
+
+    original = OfficialAttemptSeries.call(user: @teacher, school_classes: [ @class_a ], activity_exercise: @a1_x)
+    other_link = OfficialAttemptSeries.call(user: @teacher, school_classes: [ @class_a ], activity_exercise: reused)
+
+    assert_equal [ W1 ], original.weeks.map(&:week_start)
+    assert_equal [ W3 ], other_link.weeks.map(&:week_start)
+    assert_equal [ 0.0 ], other_link.weeks.map(&:average)
+  end
+
+  test "filtered series fills empty weeks and empty selections have no axis" do
+    submit(@a1_y, @s2, PARTIAL, at(W4, 1))
+    result = OfficialAttemptSeries.call(user: @teacher, school_classes: [ @class_a ], activity_exercise: @a1_y)
+    empty_link = link(@lesson_a1, "Sem tentativas")
+    empty = OfficialAttemptSeries.call(user: @teacher, school_classes: [ @class_a ], activity_exercise: empty_link)
+
+    assert_equal [ W2, W3, W4 ], result.weeks.map(&:week_start)
+    assert_equal [ 1, 0, 1 ], result.weeks.map(&:attempts_count)
+    assert_equal [ 1, 1, 2 ], result.weeks.map(&:cumulative_attempts_count)
+    assert_equal [ 1, 0, 1 ], result.weeks.map(&:distinct_students_count)
+    assert_equal [ 0.0, nil, 50.0 ], result.weeks.map(&:average)
+    assert_equal [ 0.0, 0.0, 25.0 ], result.weeks.map(&:cumulative_average)
+    assert_empty empty.weeks
+    assert_empty empty.classes.first.weeks
+  end
+
+  test "filtered multi class results share an axis and leave other classes empty" do
+    result = OfficialAttemptSeries.call(
+      user: @teacher, school_classes: [ @class_a, @class_b ], activity: @lesson_a1
+    )
+
+    assert_equal [ W1, W2 ], result.weeks.map(&:week_start)
+    assert_equal [ 0, 0 ], result.classes.last.weeks.map(&:attempts_count)
+    assert_equal [ nil, nil ], result.classes.last.weeks.map(&:average)
+  end
+
+  test "rejects inactive activity link and exercise including an inactive parent activity" do
+    @lesson_a1.update!(active: false)
+    assert_raises(ArgumentError) { OfficialAttemptSeries.call(user: @teacher, school_classes: [ @class_a ], activity: @lesson_a1) }
+    assert_raises(ArgumentError) { OfficialAttemptSeries.call(user: @teacher, school_classes: [ @class_a ], activity_exercise: @a1_x) }
+    @lesson_a1.update!(active: true)
+    @a1_x.update!(active: false)
+    assert_raises(ArgumentError) { OfficialAttemptSeries.call(user: @teacher, school_classes: [ @class_a ], activity_exercise: @a1_x) }
+    @a1_x.update!(active: true)
+    @a1_x.exercise.update!(active: false)
+    assert_raises(ArgumentError) { OfficialAttemptSeries.call(user: @teacher, school_classes: [ @class_a ], activity_exercise: @a1_x) }
+  end
+
+  test "rejects filters from another class lesson or teacher" do
+    other_teacher = create_teacher("serfilterforeign")
+    foreign_class = other_teacher.school_classes.create!(name: "Alheia", active: true)
+    foreign_lesson = foreign_class.activities.create!(title: "Alheia", published: true)
+    foreign_link = link(foreign_lesson, "Alheio")
+
+    assert_raises(ArgumentError) { OfficialAttemptSeries.call(user: @teacher, school_classes: [ @class_a ], activity: @lesson_b) }
+    assert_raises(ArgumentError) { OfficialAttemptSeries.call(user: @teacher, school_classes: [ @class_a ], activity_exercise: @b_w) }
+    assert_raises(ArgumentError) do
+      OfficialAttemptSeries.call(user: @teacher, school_classes: [ @class_a ], activity: @lesson_a1, activity_exercise: @a2_z)
+    end
+    assert_raises(ArgumentError) { OfficialAttemptSeries.call(user: @teacher, school_classes: [ @class_a ], activity: foreign_lesson) }
+    assert_raises(ArgumentError) { OfficialAttemptSeries.call(user: @teacher, school_classes: [ @class_a ], activity_exercise: foreign_link) }
+  end
+
+  test "student filters preserve published only eligibility and unfiltered series" do
+    draft = @class_a.activities.create!(title: "Rascunho", published: false)
+    draft_link = link(draft, "Rascunho")
+    submit(draft_link, @s1, RIGHT, at(W3, 1))
+
+    student_unfiltered = OfficialAttemptSeries.call(user: @s1, school_classes: [ @class_a ])
+    student_filtered = OfficialAttemptSeries.call(user: @s1, school_classes: [ @class_a ], activity: @lesson_a1)
+    student_draft = OfficialAttemptSeries.call(user: @s1, school_classes: [ @class_a ], activity_exercise: draft_link)
+    teacher_draft = OfficialAttemptSeries.call(user: @teacher, school_classes: [ @class_a ], activity: draft)
+
+    assert_equal [ W1, W2 ], student_unfiltered.weeks.map(&:week_start)
+    assert_equal student_unfiltered.weeks, student_filtered.weeks
+    assert_empty student_draft.weeks
+    assert_equal [ W3 ], teacher_draft.weeks.map(&:week_start)
+  end
+
   test "building the series does not write anything" do
     assert_no_difference -> { ExerciseAttempt.count + StudentStat.count } do
       OfficialAttemptSeries.call(user: @teacher, school_classes: [ @class_a, @class_b ])

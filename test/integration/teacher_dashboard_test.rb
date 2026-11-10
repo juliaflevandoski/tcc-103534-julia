@@ -18,6 +18,7 @@ class TeacherDashboardTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "main.dashboard-page h1", text: "Dashboard"
+    assert_select ".dashboard-empty a[href='#{new_school_class_path}']", count: 0
     assert_select "h2.dashboard-class-title", text: "Turma Alfa"
     assert_select "select#school_class_id option", count: 2
     assert_select "select#school_class_id option[selected][value='#{@school_class.id}']", count: 1
@@ -72,9 +73,13 @@ class TeacherDashboardTest < ActionDispatch::IntegrationTest
     get dashboard_url
 
     assert_response :success
-    assert_select ".dashboard-empty[role='status']", text: "Você ainda não possui turmas ativas."
+    assert_select ".dashboard-empty[role='status']", text: /Você ainda não possui turmas ativas\./
+    assert_select ".dashboard-empty a[href='#{new_school_class_path}']", text: "Criar turma"
     assert_select ".dashboard-metric", count: 0
     assert_select "form.dashboard-filter", count: 0
+
+    get new_school_class_url
+    assert_response :success
   end
 
   test "class without students, lessons or attempts shows zeros and dashes" do

@@ -54,6 +54,18 @@ export function buildSvg(chart, ids = { title: "chart-title", description: "char
   const yFor = (value) => MARGIN.top + plotHeight - (value / max) * plotHeight
   const showValues = count <= MAX_VALUE_LABELS
   const xStep = Math.ceil(count / MAX_X_LABELS)
+  const emptyBandFor = (index) => {
+    const center = xFor(index)
+    const left = bar
+      ? center - slot / 2
+      : index === 0 ? MARGIN.left : (xFor(index - 1) + center) / 2
+    const right = bar
+      ? center + slot / 2
+      : index === count - 1 ? WIDTH - MARGIN.right : (center + xFor(index + 1)) / 2
+    const boundedLeft = Math.max(MARGIN.left, Number(left.toFixed(1)))
+    const boundedRight = Math.min(WIDTH - MARGIN.right, Number(right.toFixed(1)))
+    return { x: boundedLeft, width: bar ? Math.min(slot, boundedRight - boundedLeft) : boundedRight - boundedLeft }
+  }
   const parts = []
 
   parts.push(`<svg class="time-series-chart-svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" role="img" aria-labelledby="${ids.title} ${ids.description}" focusable="false" xmlns="${SVG_NS}">`)
@@ -61,7 +73,8 @@ export function buildSvg(chart, ids = { title: "chart-title", description: "char
 
   chart.weeks.forEach((week, index) => {
     if (chart.series.every((series) => series.values[index] === null)) {
-      parts.push(`<rect class="time-series-chart-empty" x="${(xFor(index) - slot / 2).toFixed(1)}" y="${MARGIN.top}" width="${slot.toFixed(1)}" height="${plotHeight}"><title>${escapeText(`${week.full}: sem dados`)}</title></rect>`)
+      const band = emptyBandFor(index)
+      parts.push(`<rect class="time-series-chart-empty" x="${band.x.toFixed(1)}" y="${MARGIN.top}" width="${band.width.toFixed(1)}" height="${plotHeight}"><title>${escapeText(`${week.full}: sem dados`)}</title></rect>`)
     }
   })
 

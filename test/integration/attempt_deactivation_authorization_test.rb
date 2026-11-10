@@ -52,6 +52,137 @@ class AttemptDeactivationAuthorizationTest < ActionDispatch::IntegrationTest
     assert_select ".student-exercise-metric--score dd", text: "0 / 10"
   end
 
+  test "student can retry an accessible exercise from their attempt history" do
+    login(@student, "student")
+
+    get exercise_attempt_url(@later)
+
+    assert_response :success
+    assert_select "nav.attempt-result-navigation a[href='#{exercise_attempts_path(school_class_id: @school_class.id)}']", text: "Resultados"
+    assert_select "a", text: "Tentar novamente", count: 1
+
+    get exercise_attempts_url(school_class_id: @school_class.id)
+
+    assert_response :success
+  end
+
+  test "student results link is unfiltered when their class membership is inactive" do
+    @school_class.class_students.find_by!(student: @student).update!(active: false)
+    login(@student, "student")
+    before_attempts = ExerciseAttempt.count
+    later_before = @later.attributes
+    official_before = @official.attributes
+    xp_before = @student.student_stat&.xp
+
+    get exercise_attempt_url(@later)
+
+    assert_response :success
+    assert_select "nav.attempt-result-navigation a[href='#{exercise_attempts_path}']", text: "Resultados"
+    assert_select "a[href='#{exercise_attempts_path(school_class_id: @school_class.id)}']", text: "Resultados", count: 0
+    assert_equal later_before, @later.reload.attributes
+    assert_equal official_before, @official.reload.attributes
+    assert_equal before_attempts, ExerciseAttempt.count
+    assert_equal xp_before, @student.student_stat&.reload&.xp
+
+    get exercise_attempts_url
+
+    assert_response :success
+  end
+
+  test "student results link is unfiltered when the class is inactive" do
+    @school_class.update!(active: false)
+    login(@student, "student")
+
+    get exercise_attempt_url(@later)
+
+    assert_response :success
+    assert_select "nav.attempt-result-navigation a[href='#{exercise_attempts_path}']", text: "Resultados"
+
+    get exercise_attempts_url
+
+    assert_response :success
+  end
+
+  test "student cannot view another student's attempt history" do
+    login(@student, "student")
+    before_attempt = @other_attempt.attributes
+    before_attempt_count = ExerciseAttempt.count
+    xp_before = @other_student.student_stat&.xp
+
+    get exercise_attempt_url(@other_attempt)
+
+    assert_redirected_to root_url
+    assert_equal before_attempt, @other_attempt.reload.attributes
+    assert_equal before_attempt_count, ExerciseAttempt.count
+    assert_equal xp_before, @other_student.student_stat&.reload&.xp
+  end
+
+  [
+    [ "deactivated exercise", :deactivate_exercise ],
+    [ "deactivated association", :deactivate_association ],
+    [ "unpublished activity", :unpublish_activity ],
+    [ "deactivated class", :deactivate_class ],
+    [ "inactive membership", :deactivate_membership ]
+  ].each do |context, deactivation_method|
+    test "student history remains accessible but retry is hidden when #{context}" do
+      login(@student, "student")
+      before = @later.attributes
+      official_before = @official.attributes
+      attempt_count_before = ExerciseAttempt.count
+      xp_before = @student.student_stat&.xp
+      send(deactivation_method)
+
+      get exercise_attempt_url(@later)
+
+      assert_response :success
+      assert_select ".attempt-result-page h1", text: "Quiz desativação"
+      assert_select "a", text: "Tentar novamente", count: 0
+      assert_equal before, @later.reload.attributes
+      assert_equal official_before, @official.reload.attributes
+      assert_equal attempt_count_before, ExerciseAttempt.count
+      assert_equal xp_before, @student.student_stat&.reload&.xp
+    end
+  end
+
+  test "memory game resume is available only while its activity exercise is accessible" do
+    memory_exercise = @teacher.exercises.create!(
+      title: "Memória desativação",
+      exercise_type: :memory_game,
+      object: Exercises::MemoryGameBuilder.call(object: {
+        instructions: "Combine os nomes.",
+        pair_type: "word_word",
+        pairs: [
+          { left: { type: "word", content: "DOG" }, right: { type: "word", content: "CACHORRO" } },
+          { left: { type: "word", content: "CAT" }, right: { type: "word", content: "GATO" } }
+        ]
+      }).object
+    )
+    memory_link = @activity.activity_exercises.create!(exercise: memory_exercise, position: 2, points: 10)
+    login(@student, "student")
+    post exercise_attempts_url, params: { exercise_attempt: { activity_exercise_id: memory_link.id } }
+    attempt = ExerciseAttempt.order(:id).last
+
+    get exercise_attempt_url(attempt)
+
+    assert_response :success
+    assert_select "a", text: "Voltar ao jogo", count: 1
+
+    memory_link.update!(active: false)
+    before = attempt.reload.attributes
+    official_before = @official.attributes
+    attempt_count_before = ExerciseAttempt.count
+    xp_before = @student.student_stat&.xp
+
+    get exercise_attempt_url(attempt)
+
+    assert_response :success
+    assert_select "a", text: "Voltar ao jogo", count: 0
+    assert_equal before, attempt.reload.attributes
+    assert_equal official_before, @official.reload.attributes
+    assert_equal attempt_count_before, ExerciseAttempt.count
+    assert_equal xp_before, @student.student_stat&.reload&.xp
+  end
+
   test "teacher who owns the activity cannot deactivate a student attempt directly" do
     login(@teacher, "teacher")
 
@@ -98,6 +229,26 @@ class AttemptDeactivationAuthorizationTest < ActionDispatch::IntegrationTest
   end
 
   private
+
+  def deactivate_exercise
+    @link.exercise.update!(active: false)
+  end
+
+  def deactivate_association
+    @link.update!(active: false)
+  end
+
+  def unpublish_activity
+    @activity.update!(published: false)
+  end
+
+  def deactivate_class
+    @school_class.update!(active: false)
+  end
+
+  def deactivate_membership
+    @school_class.class_students.find_by!(student: @student).update!(active: false)
+  end
 
   def create_student(prefix)
     id = "#{prefix}_#{SecureRandom.hex(6)}"

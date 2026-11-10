@@ -23,7 +23,7 @@ class ActivityExercisesController < ApplicationController
     @activity_exercise = @activity.activity_exercises.build(activity_exercise_params.except(:activity_id, :position))
     @activity_exercise.exercise = exercise
     authorize @activity_exercise
-    return redirect_to @activity if ActivityExercises::Append.call(@activity_exercise)
+    return redirect_to @activity, notice: "Exercício adicionado à aula com sucesso." if ActivityExercises::Append.call(@activity_exercise)
 
     redirect_to @activity, alert: @activity_exercise.errors.full_messages.to_sentence
   rescue ActiveRecord::RecordNotFound
@@ -52,7 +52,7 @@ class ActivityExercisesController < ApplicationController
   def update
     authorize @activity_exercise
     @activity_exercise.assign_attributes(authorized_update_params)
-    return redirect_to @activity_exercise if @activity_exercise.save
+    return redirect_to @activity_exercise, notice: "Associação atualizada com sucesso." if @activity_exercise.save
 
     load_options
     render :edit, status: :unprocessable_entity

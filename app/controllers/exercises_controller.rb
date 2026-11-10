@@ -28,6 +28,7 @@ class ExercisesController < ApplicationController
 
   def show
     authorize @exercise
+    @crossword_invalid = current_teacher.present? && @exercise.crossword? && !valid_crossword_content?(@exercise.object)
     @already_in_source_activity = @source_activity&.activity_exercises&.active&.exists?(exercise_id: @exercise.id)
     if current_student && (@exercise.quiz? || @exercise.fill_blanks? || @exercise.ordering? || @exercise.crossword? || @exercise.memory_game?)
       @activity_exercise = ActivityExercise.active.find_by!(id: params[:activity_exercise_id], exercise_id: @exercise.id)
@@ -48,6 +49,7 @@ class ExercisesController < ApplicationController
       end
     elsif current_student && @exercise.crossword?
       @crossword_payload = crossword_student_payload(@exercise.object)
+      redirect_to activity_path(@activity_exercise.activity), alert: CROSSWORD_UNAVAILABLE_MESSAGE unless @crossword_payload
     elsif current_student && @exercise.memory_game?
       @memory_game_attempt = load_memory_game_attempt
       @memory_game_payload = memory_game_student_payload(@memory_game_attempt) if @memory_game_attempt
@@ -234,10 +236,10 @@ class ExercisesController < ApplicationController
       return render :new, status: :unprocessable_entity unless prepare_memory_game_object!(attributes[:object])
       return render :new, status: :unprocessable_entity unless save_memory_game_exercise
 
-      return redirect_to created_exercise_path
+      return redirect_to created_exercise_path, notice: "Exercício criado com sucesso."
     end
 
-    return redirect_to created_exercise_path if @exercise.save
+    return redirect_to created_exercise_path, notice: "Exercício criado com sucesso." if @exercise.save
 
     render :new, status: :unprocessable_entity
   end
@@ -256,9 +258,9 @@ class ExercisesController < ApplicationController
       return render :edit, status: :unprocessable_entity unless prepare_memory_game_object!(attributes[:object])
       return render :edit, status: :unprocessable_entity unless save_memory_game_exercise
 
-      return redirect_to created_exercise_path
+      return redirect_to created_exercise_path, notice: "Exercício atualizado com sucesso."
     end
-    return redirect_to created_exercise_path if @exercise.save
+    return redirect_to created_exercise_path, notice: "Exercício atualizado com sucesso." if @exercise.save
 
     render :edit, status: :unprocessable_entity
   end
@@ -556,7 +558,13 @@ class ExercisesController < ApplicationController
 
     blob_id = element.fetch("blob_id")
     attachment = @exercise.memory_images_attachments.find_by!(blob_id:)
-    { "id" => card.fetch("id"), "type" => "image", "url" => rails_blob_path(attachment.blob, only_path: true) }
+    description = element["description"].presence || element["ai_description"].presence
+    {
+      "id" => card.fetch("id"),
+      "type" => "image",
+      "url" => rails_blob_path(attachment.blob, only_path: true),
+      "description" => description
+    }.compact
   end
 
   def prepare_crossword_object!(submitted_object)

@@ -32,7 +32,7 @@
         <%= form_with url: login_path, method: :post do |form| %>
           <%= hidden_field_tag :role, @role %>
           <%= form.label :username, "Usuário" %>
-          <%= form.text_field :username, required: true, autofocus: true, autocomplete: "username", class: "login-input" %>
+          <%= form.text_field :username, required: true, autofocus: true, autocomplete: "username", class: "login-input", value: @username %>
           <%= form.label :password, "Senha" %>
           <%= form.password_field :password, required: true, autocomplete: "current-password", class: "login-input" %>
           <div class="actions login-actions"><%= form.submit "Entrar", class: "button login-submit" %></div>

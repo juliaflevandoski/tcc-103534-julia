@@ -9,7 +9,7 @@
 				<article class="activities-index-card">
 					<div class="activities-index-card-details">
 						<h2><%= activity.title %></h2>
-						<p class="activities-index-class">Turma: <%= activity.school_class.name %></p>
+						<p class="activities-index-class">Turma: <%= activity.school_class.name %><% unless activity.school_class.active? %> <span class="activities-index-class-status">Turma desativada</span><% end %></p>
 						<p class="activities-index-status <%= activity.published? ? "is-published" : "is-draft" %>">
 							<span class="activities-index-status-indicator" aria-hidden="true"></span>
 							<%= activity.published? ? "Publicada" : "Rascunho" %>

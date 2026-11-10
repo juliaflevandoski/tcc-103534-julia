@@ -45,6 +45,7 @@ class StudentDashboardTest < ActionDispatch::IntegrationTest
     assert_select ".dashboard-metric--completion dd", text: "75.0%"
     assert_select "a[href='#{exercise_attempts_path}']", text: "Meus resultados"
     assert_select ".internal-navigation-link[href='#{dashboard_path}'][aria-current='page']", text: "Dashboard"
+    assert_select ".dashboard-empty a[href='#{school_classes_path}']", count: 0
   end
 
   test "class filter limits the indicators and the results link" do
@@ -112,9 +113,14 @@ class StudentDashboardTest < ActionDispatch::IntegrationTest
     get dashboard_url
 
     assert_response :success
-    assert_select ".dashboard-empty[role='status']", text: "Você ainda não está em uma turma ativa."
+    assert_select ".dashboard-empty[role='status']", text: /Você ainda não está em uma turma ativa\./
+    assert_select ".dashboard-empty a[href='#{school_classes_path}']", text: "Entrar em uma turma"
     assert_select ".dashboard-metric", count: 0
     assert_select "form.dashboard-filter", count: 0
+
+    get school_classes_url
+    assert_response :success
+    assert_select ".school-class-join-panel", count: 1
   end
 
   test "class without lessons or attempts shows zeros and dashes without bars" do
@@ -367,13 +373,11 @@ class StudentDashboardTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "teacher dashboard is unchanged and unauthenticated users go to login" do
+  test "teacher sees no student dashboard and unauthenticated users go to login" do
     sign_in_teacher
     get dashboard_url
-    assert_select ".time-series-chart", count: 0
-    assert_select ".dashboard-evolution", count: 0
+    assert_select "#student-performance-chart, #student-exercises-chart", count: 0
     assert_response :success
-    assert_select ".dashboard-progress-section", count: 0
     assert_select ".dashboard-student-lesson", count: 0
     assert_select "select#student_id", count: 1
     assert_select ".dashboard-gamification", count: 0

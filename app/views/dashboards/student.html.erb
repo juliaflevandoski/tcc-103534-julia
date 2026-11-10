@@ -6,7 +6,7 @@
 	</header>
 
 	<% if @school_classes.empty? %>
-		<p class="dashboard-empty" role="status">Você ainda não está em uma turma ativa.</p>
+		<p class="dashboard-empty" role="status">Você ainda não está em uma turma ativa. <%= link_to "Entrar em uma turma", school_classes_path, class: "button dashboard-submit" %></p>
 	<% else %>
 		<%= form_with url: dashboard_path, method: :get, class: "dashboard-filter dashboard-filter--inline" do %>
 			<div class="dashboard-field">

@@ -20,7 +20,7 @@
 	</div>
 	<% end %>
 	<% if teacher_preview %>
-		<% teacher_object = @exercise.object.deep_stringify_keys %>
+		<% teacher_object = @crossword_invalid ? {} : @exercise.object.deep_stringify_keys %>
 		<% type_label = { "quiz" => "Quiz", "fill_blanks" => "Complete as lacunas", "ordering" => "Ordenação", "crossword" => "Palavra cruzada", "memory_game" => "Jogo da memória" }[@exercise.exercise_type.to_s] %>
 		<div class="exercise-show-page">
 			<header class="exercise-show-header">
@@ -35,7 +35,11 @@
 			<% elsif @exercise.ordering? %>
 				<%= render "ordering_teacher_preview", exercise: @exercise %>
 			<% elsif @exercise.crossword? %>
-				<%= render "crossword_preview", exercise: @exercise, crossword: @exercise.object %>
+				<% if @crossword_invalid %>
+					<p class="notice" role="alert"><%= StudentPlayerContext::CROSSWORD_UNAVAILABLE_MESSAGE %></p>
+				<% else %>
+					<%= render "crossword_preview", exercise: @exercise, crossword: @exercise.object %>
+				<% end %>
 			<% else %>
 				<%= render "memory_game_preview", exercise: @exercise, cards: @memory_game_preview_deck %>
 			<% end %>

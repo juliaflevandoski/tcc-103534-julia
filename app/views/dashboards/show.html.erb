@@ -6,7 +6,7 @@
 	</header>
 
 	<% if @school_classes.empty? %>
-		<p class="dashboard-empty" role="status">Você ainda não possui turmas ativas.</p>
+		<p class="dashboard-empty" role="status">Você ainda não possui turmas ativas. <%= link_to "Criar turma", new_school_class_path, class: "button dashboard-submit" %></p>
 	<% else %>
 		<%= form_with url: dashboard_path, method: :get, class: "dashboard-filter", data: { controller: "dashboard-filter", dashboard_filter_options_value: @filter_options.to_json } do %>
 			<div class="dashboard-field">
@@ -68,6 +68,42 @@
 				<%= render "exercise_ranking", id: "dashboard-best-title", title: "Exercícios com melhor desempenho", rankings: @dashboard.best_exercises %>
 				<%= render "exercise_ranking", id: "dashboard-worst-title", title: "Exercícios com menor desempenho", rankings: @dashboard.worst_exercises %>
 			</div>
+			<section class="dashboard-progress-section dashboard-evolution" aria-labelledby="teacher-evolution-title">
+				<h2 id="teacher-evolution-title">Evolução da turma</h2>
+				<p class="dashboard-evolution-intro">O histórico considera a elegibilidade atual das turmas, matrículas, alunos, aulas e exercícios. As semanas usam a data de criação da tentativa oficial; no Jogo da Memória, ela pode ser anterior à conclusão.</p>
+				<%= time_series_chart(
+					id: "teacher-performance-chart",
+					type: "line",
+					unit: "percent",
+					title: "Evolução do desempenho",
+					description: "Média das notas oficiais de cada semana. Pode diferir do indicador geral, que usa a média das médias dos alunos.",
+					weeks: @series.weeks,
+					series: [ { label: "Média semanal", metric: :average } ],
+					empty_message: "Não há tentativas oficiais para os filtros selecionados."
+				) %>
+				<%= time_series_chart(
+					id: "teacher-exercises-chart",
+					type: "bar",
+					unit: "count",
+					title: "Exercícios realizados",
+					description: "Quantidade de tentativas oficiais em cada semana, sem acumulação.",
+					weeks: @series.weeks,
+					series: [ { label: "Tentativas oficiais na semana", metric: :attempts_count } ],
+					empty_message: "Não há tentativas oficiais para os filtros selecionados."
+				) %>
+				<% unless @selected_student %>
+					<%= time_series_chart(
+						id: "teacher-participants-chart",
+						type: "bar",
+						unit: "count",
+						title: "Alunos participantes",
+						description: "Alunos distintos com pelo menos uma tentativa oficial em cada semana.",
+						weeks: @series.weeks,
+						series: [ { label: "Alunos participantes na semana", metric: :distinct_students_count } ],
+						empty_message: "Não há tentativas oficiais para os filtros selecionados."
+					) %>
+				<% end %>
+			</section>
 			<p class="dashboard-link"><%= link_to "Ver resultados da turma", exercise_attempts_path(school_class_id: @selected_school_class.id), class: "button dashboard-results-link" %></p>
 		</section>
 	<% end %>

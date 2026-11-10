@@ -1,6 +1,7 @@
 # Prepara séries semanais a partir das tentativas oficiais (primeira tentativa válida por aluno e vínculo).
 #
-# Só usa dados que têm data real: o created_at da tentativa oficial. Matrícula, publicação e
+# Só usa dados que têm data real: o created_at da tentativa oficial. No jogo da memória,
+# essa data pode anteceder a conclusão da partida. Matrícula, publicação e
 # conclusão de aula não têm histórico, então nenhuma data é inferida para elas; os vínculos,
 # aulas, turmas e alunos considerados são os atualmente elegíveis segundo o ResultsDashboard.
 # Tentativas oficiais posteriormente desativadas continuam contando, como em ActivityResults.
@@ -16,7 +17,8 @@
 # - average: média simples dos percentuais oficiais das tentativas da semana (nil sem notas).
 # - cumulative_average: média simples de todos os percentuais oficiais da primeira semana até
 #   esta, em conjunto (não é a média das médias semanais). Semanas vazias repetem o último valor
-#   acumulado; antes da primeira nota é nil. Sua última semana iguala a média geral do dashboard.
+#   acumulado; antes da primeira nota é nil. A média por tentativa pode diferir da média
+#   das médias individuais exibida no dashboard do professor.
 # - cumulative_attempts_count: total acumulado de tentativas oficiais.
 class OfficialAttemptSeries
   Week = Struct.new(
@@ -29,14 +31,16 @@ class OfficialAttemptSeries
 
   Point = Struct.new(:class_id, :student_id, :week_start, :percentage)
 
-  def self.call(user:, school_classes:, student: nil)
-    new(user:, school_classes:, student:).call
+  def self.call(user:, school_classes:, student: nil, activity: nil, activity_exercise: nil)
+    new(user:, school_classes:, student:, activity:, activity_exercise:).call
   end
 
-  def initialize(user:, school_classes:, student: nil)
+  def initialize(user:, school_classes:, student: nil, activity: nil, activity_exercise: nil)
     @user = user
     @school_classes = Array(school_classes)
     @student = student
+    @activity = activity
+    @activity_exercise = activity_exercise
     validate!
   end
 
@@ -74,6 +78,21 @@ class OfficialAttemptSeries
         raise ArgumentError, "Turma sem matrícula ativa do aluno"
       end
     end
+
+    class_ids = @school_classes.map(&:id)
+    if @activity && (!@activity.is_a?(Activity) || !@activity.persisted? ||
+        !Activity.active.where(id: @activity.id, class_id: class_ids).exists?)
+      raise ArgumentError, "Aula inválida para as turmas autorizadas"
+    end
+    if @activity_exercise
+      links = ActivityExercise.active.joins(:activity, :exercise)
+        .where(activities: { active: true, class_id: class_ids }, exercises: { active: true })
+      links = links.where(activity_id: @activity.id) if @activity
+      unless @activity_exercise.is_a?(ActivityExercise) && @activity_exercise.persisted? &&
+          links.exists?(id: @activity_exercise.id)
+        raise ArgumentError, "Vínculo inválido para as turmas ou aula autorizadas"
+      end
+    end
   end
 
   def points_for(school_class)
@@ -83,7 +102,11 @@ class OfficialAttemptSeries
     end
 
     data.fetch(:activities).flat_map do |activity_result|
+      next [] if @activity && activity_result.fetch(:activity).id != @activity.id
+
       activity_result.fetch(:exercises).flat_map do |exercise_result|
+        next [] if @activity_exercise && exercise_result.fetch(:activity_exercise).id != @activity_exercise.id
+
         exercise_result.fetch(:official_by_student).filter_map do |student_id, attempt|
           next if @student && student_id != @student.id
 

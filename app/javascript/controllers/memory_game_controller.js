@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { memoryCardAccessibleName, memoryCardImageAlt } from "controllers/memory_game_accessibility"
 
 const UNEXPECTED_RESPONSE_MESSAGE = "Não foi possível registrar a jogada. Recarregue a página e tente novamente."
 
@@ -98,11 +99,11 @@ export default class extends Controller {
     } else {
       const image = document.createElement("img")
       image.src = content.url
-      image.alt = "Imagem da carta"
+      image.alt = memoryCardImageAlt(content.description)
       card.append(image)
     }
     card.classList.add("is-revealed")
-    card.setAttribute("aria-label", content.type === "word" ? `Carta revelada: ${content.content}` : "Carta revelada: imagem")
+    card.setAttribute("aria-label", memoryCardAccessibleName(content))
     card.dataset.revealed = "true"
   }
 
@@ -122,7 +123,8 @@ export default class extends Controller {
     card.classList.remove("is-mismatch")
     card.disabled = true
     card.dataset.found = "true"
-    card.setAttribute("aria-label", "Par encontrado")
+    const accessibleName = card.getAttribute("aria-label")
+    card.setAttribute("aria-label", accessibleName.replace(/^(?:Carta|Imagem) revelada/, "Par encontrado"))
   }
 
   updateStats(payload) {

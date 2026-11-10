@@ -21,7 +21,7 @@
 
 	<section data-exercise-form-target="quizFields" hidden>
 		<h2>Editor do quiz</h2>
-		<button type="button" class="button quiz-ai-open" data-action="exercise-form#openQuizAiModal">Gerar com IA <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></button>
+		<button type="button" class="button quiz-ai-open exercise-ai-open" data-action="exercise-form#openQuizAiModal">Gerar com IA <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></button>
 		<dialog class="quiz-ai-modal" data-exercise-form-target="quizAiModal" data-ai-generation-kind="quiz" data-action="close->exercise-form#invalidateAiGeneration" aria-labelledby="quiz-ai-title">
 			<h2 id="quiz-ai-title">Gerar quiz com IA</h2>
 			<p>O quiz gerado será apenas uma sugestão para revisão. Ele não será salvo automaticamente.</p>
@@ -102,7 +102,7 @@
 
 	<section class="fill-blanks-editor" data-exercise-form-target="fillBlanksFields" hidden>
 		<h2>Editor de lacunas</h2>
-		<button type="button" class="button" data-action="exercise-form#openFillBlanksAiModal">Gerar lacunas com IA</button>
+		<button type="button" class="button exercise-ai-open" data-action="exercise-form#openFillBlanksAiModal">Gerar com IA <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></button>
 		<dialog class="quiz-ai-modal" data-exercise-form-target="fillBlanksAiModal" data-ai-generation-kind="fillBlanks" data-action="close->exercise-form#invalidateAiGeneration" aria-labelledby="fill-blanks-ai-title">
 			<h2 id="fill-blanks-ai-title">Gerar exercício de lacunas com IA</h2>
 			<p>A sugestão será aplicada somente ao editor após revisão. Não será salva automaticamente.</p>
@@ -147,7 +147,7 @@
 			options_for_select([["Sequência única", "single_sequence"], ["Múltiplas frases", "multiple_sentences"]]),
 			data: { exercise_form_target: "orderingFormat", action: "change->exercise-form#changeOrderingFormat" } %>
 		<div data-exercise-form-target="orderingAiOpenWrapper">
-			<button type="button" class="button" data-action="exercise-form#openOrderingAiModal">Gerar ordenação com IA</button>
+			<button type="button" class="button exercise-ai-open" data-action="exercise-form#openOrderingAiModal">Gerar com IA <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></button>
 		</div>
 		<dialog class="quiz-ai-modal" data-exercise-form-target="orderingAiModal" data-ai-generation-kind="ordering" data-action="close->exercise-form#invalidateAiGeneration" aria-labelledby="ordering-ai-title">
 			<h2 id="ordering-ai-title">Gerar exercício de Ordenação com IA</h2>
@@ -223,7 +223,7 @@
 
 	<section class="crossword-editor" data-exercise-form-target="crosswordFields" hidden>
 		<h2>Editor de palavra cruzada</h2>
-		<button type="button" class="button" data-action="exercise-form#openCrosswordAiModal">Gerar palavras com IA</button>
+		<button type="button" class="button exercise-ai-open" data-action="exercise-form#openCrosswordAiModal">Gerar com IA <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></button>
 		<dialog class="quiz-ai-modal" data-exercise-form-target="crosswordAiModal" data-ai-generation-kind="crossword" data-action="close->exercise-form#invalidateAiGeneration" aria-labelledby="crossword-ai-title">
 			<h2 id="crossword-ai-title">Gerar palavras e pistas com IA</h2>
 			<p>A sugestão será aplicada somente ao editor após revisão. A grade será construída pelo Ludus.</p>
@@ -274,7 +274,7 @@
 		<legend>Jogo da memória</legend>
 		<h2>Editor de jogo da memória</h2>
 		<div data-exercise-form-target="memoryEditor">
-			<button type="button" class="button" data-action="exercise-form#openMemoryGameAiModal">Gerar pares com IA</button>
+			<button type="button" class="button exercise-ai-open" data-action="exercise-form#openMemoryGameAiModal">Gerar com IA <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></button>
 			<dialog class="quiz-ai-modal" data-exercise-form-target="memoryGameAiModal" data-ai-generation-kind="memoryGame" data-action="close->exercise-form#invalidateAiGeneration" aria-labelledby="memory-ai-title">
 				<h2 id="memory-ai-title">Gerar pares para o jogo da memória</h2>
 				<p>A IA sugere conteúdo textual. Imagens não são geradas; serão adicionadas manualmente pelo professor.</p>
@@ -343,7 +343,6 @@
 			<p class="errors" data-exercise-form-target="memoryGameError" role="alert" hidden></p>
 			<div class="actions memory-game-actions">
 				<button type="button" class="button memory-preview-button" data-exercise-form-target="memoryPreviewButton" data-action="exercise-form#previewMemoryGame">Pré-visualizar jogo</button>
-				<button type="button" class="button memory-edit-button" data-exercise-form-target="memoryEditButton" data-action="exercise-form#editMemoryGame" hidden>Voltar à edição</button>
 			</div>
 		</div>
 		<section data-exercise-form-target="memoryPreview" hidden aria-live="polite"></section>
@@ -355,6 +354,7 @@
 	</div>
 
 	<div class="actions exercise-form-actions">
+		<button type="button" class="button exercise-form-cancel memory-edit-button" data-exercise-form-target="memoryEditButton" data-action="exercise-form#editMemoryGame" hidden>Voltar para edição</button>
 		<%= form.submit "Salvar", class: "exercise-form-submit", data: { exercise_form_target: "submitButton" } %>
 		<%= link_to "Cancelar", (@source_activity ? activity_path(@source_activity) : exercises_path), class: "button exercise-form-cancel" %>
 	</div>

@@ -1,7 +1,13 @@
 module StudentPlayerContext
   extend ActiveSupport::Concern
 
+  CROSSWORD_UNAVAILABLE_MESSAGE = "Este exercício está indisponível porque seu conteúdo é inválido.".freeze
+
   private
+
+  def valid_crossword_content?(object)
+    Exercises::ExerciseContentValidator.call(exercise_type: "crossword", object:).success?
+  end
 
   def ordering_sentences_for_student(ordering)
     Array(ordering["sentences"]).map do |sentence|
@@ -13,6 +19,8 @@ module StudentPlayerContext
   end
 
   def crossword_student_payload(object)
+    return unless valid_crossword_content?(object)
+
     layout = object.deep_stringify_keys
     cells = layout.fetch("grid").fetch("cells")
     {

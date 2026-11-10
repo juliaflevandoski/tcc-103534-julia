@@ -385,7 +385,7 @@ body { margin: 0; }
 }
 .internal-profile-label {
 	margin: 1.6rem .65rem .65rem;
-	color: #777F98;
+	color: #5F6783;
 	font-size: .72rem;
 	font-weight: 750;
 	letter-spacing: .1em;
@@ -1273,6 +1273,9 @@ body { margin: 0; }
 .exercise-form-page .exercise-form-actions > .exercise-form-submit:disabled {
 	opacity: .55;
 	cursor: not-allowed;
+}
+.exercise-form-page .exercise-form-actions > .memory-edit-button[hidden] {
+	display: none;
 }
 @media (max-width: 30rem) {
 	.exercise-form-page .exercise-form-actions {
@@ -2200,7 +2203,6 @@ body { margin: 0; }
 	outline: 3px solid rgb(79 86 217 / 16%);
 	outline-offset: 1px;
 }
-.exercise-form-page .ordering-editor > [data-exercise-form-target="orderingAiOpenWrapper"] > button[data-action="exercise-form#openOrderingAiModal"],
 .exercise-form-page .ordering-editor [data-exercise-form-target="orderingSingleFields"] > button[data-action="exercise-form#addOrderingItem"],
 .exercise-form-page .ordering-editor [data-exercise-form-target="orderingMultipleFields"] > button[data-action="exercise-form#addOrderingSentence"] {
 	display: inline-flex;
@@ -2224,14 +2226,12 @@ body { margin: 0; }
 	cursor: pointer;
 	transition: background-color .16s ease, box-shadow .16s ease, transform .16s ease;
 }
-.exercise-form-page .ordering-editor > [data-exercise-form-target="orderingAiOpenWrapper"] > button[data-action="exercise-form#openOrderingAiModal"]:hover:not(:disabled),
 .exercise-form-page .ordering-editor [data-exercise-form-target="orderingSingleFields"] > button[data-action="exercise-form#addOrderingItem"]:hover:not(:disabled),
 .exercise-form-page .ordering-editor [data-exercise-form-target="orderingMultipleFields"] > button[data-action="exercise-form#addOrderingSentence"]:hover:not(:disabled) {
 	background: #4249C2;
 	box-shadow: 0 3px 8px rgb(79 86 217 / 18%);
 	transform: translateY(-1px);
 }
-.exercise-form-page .ordering-editor > [data-exercise-form-target="orderingAiOpenWrapper"] > button[data-action="exercise-form#openOrderingAiModal"]:focus-visible,
 .exercise-form-page .ordering-editor [data-exercise-form-target="orderingSingleFields"] > button[data-action="exercise-form#addOrderingItem"]:focus-visible,
 .exercise-form-page .ordering-editor [data-exercise-form-target="orderingMultipleFields"] > button[data-action="exercise-form#addOrderingSentence"]:focus-visible {
 	outline: 3px solid rgb(79 86 217 / 28%);
@@ -2242,7 +2242,6 @@ body { margin: 0; }
 	outline: 3px solid #25C5A7;
 	outline-offset: 2px;
 }
-.exercise-form-page .ordering-editor > [data-exercise-form-target="orderingAiOpenWrapper"] > button[data-action="exercise-form#openOrderingAiModal"]:active:not(:disabled),
 .exercise-form-page .ordering-editor [data-exercise-form-target="orderingSingleFields"] > button[data-action="exercise-form#addOrderingItem"]:active:not(:disabled),
 .exercise-form-page .ordering-editor [data-exercise-form-target="orderingMultipleFields"] > button[data-action="exercise-form#addOrderingSentence"]:active:not(:disabled),
 .exercise-form-page .ordering-editor [data-exercise-form-target="orderingItemsList"] button[data-action="exercise-form#removeOrderingItem"]:active:not(:disabled),
@@ -2279,7 +2278,6 @@ body { margin: 0; }
 	box-shadow: 0 .25rem .55rem rgb(163 59 72 / 10%);
 	transform: translateY(-1px);
 }
-.exercise-form-page .ordering-editor > [data-exercise-form-target="orderingAiOpenWrapper"] > button[data-action="exercise-form#openOrderingAiModal"]:disabled,
 .exercise-form-page .ordering-editor [data-exercise-form-target="orderingSingleFields"] > button[data-action="exercise-form#addOrderingItem"]:disabled,
 .exercise-form-page .ordering-editor [data-exercise-form-target="orderingMultipleFields"] > button[data-action="exercise-form#addOrderingSentence"]:disabled,
 .exercise-form-page .ordering-editor [data-exercise-form-target="orderingItemsList"] button[data-action="exercise-form#removeOrderingItem"]:disabled,
@@ -2333,7 +2331,6 @@ body { margin: 0; }
 		grid-column: 2;
 		justify-self: start;
 	}
-	.exercise-form-page .ordering-editor > [data-exercise-form-target="orderingAiOpenWrapper"] > button[data-action="exercise-form#openOrderingAiModal"],
 	.exercise-form-page .ordering-editor [data-exercise-form-target="orderingSingleFields"] > button[data-action="exercise-form#addOrderingItem"],
 	.exercise-form-page .ordering-editor [data-exercise-form-target="orderingMultipleFields"] > button[data-action="exercise-form#addOrderingSentence"] {
 		margin-right: .25rem;
@@ -2354,7 +2351,6 @@ body { margin: 0; }
 	}
 }
 @media (prefers-reduced-motion: reduce) {
-	.exercise-form-page .ordering-editor > [data-exercise-form-target="orderingAiOpenWrapper"] > button[data-action="exercise-form#openOrderingAiModal"],
 	.exercise-form-page .ordering-editor [data-exercise-form-target="orderingSingleFields"] > button[data-action="exercise-form#addOrderingItem"],
 	.exercise-form-page .ordering-editor [data-exercise-form-target="orderingMultipleFields"] > button[data-action="exercise-form#addOrderingSentence"],
 	.exercise-form-page .ordering-editor [data-exercise-form-target="orderingItemsList"] button[data-action="exercise-form#removeOrderingItem"],
@@ -2438,7 +2434,6 @@ body { margin: 0; }
 	outline: 3px solid rgb(79 86 217 / 16%);
 	outline-offset: 1px;
 }
-.exercise-form-page .fill-blanks-editor > button[data-action="exercise-form#openFillBlanksAiModal"],
 .exercise-form-page .fill-blanks-editor > button[data-action="exercise-form#convertSelection"] {
 	display: inline-flex;
 	align-items: center;
@@ -2461,22 +2456,18 @@ body { margin: 0; }
 	cursor: pointer;
 	transition: background-color .16s ease, box-shadow .16s ease, transform .16s ease;
 }
-.exercise-form-page .fill-blanks-editor > button[data-action="exercise-form#openFillBlanksAiModal"]:hover:not(:disabled),
 .exercise-form-page .fill-blanks-editor > button[data-action="exercise-form#convertSelection"]:hover:not(:disabled) {
 	background: #4249C2;
 	box-shadow: 0 3px 8px rgb(79 86 217 / 18%);
 	transform: translateY(-1px);
 }
-.exercise-form-page .fill-blanks-editor > button[data-action="exercise-form#openFillBlanksAiModal"]:focus-visible,
 .exercise-form-page .fill-blanks-editor > button[data-action="exercise-form#convertSelection"]:focus-visible {
 	outline: 3px solid rgb(79 86 217 / 28%);
 	outline-offset: 2px;
 }
-.exercise-form-page .fill-blanks-editor > button[data-action="exercise-form#openFillBlanksAiModal"]:active:not(:disabled),
 .exercise-form-page .fill-blanks-editor > button[data-action="exercise-form#convertSelection"]:active:not(:disabled) {
 	transform: translateY(0);
 }
-.exercise-form-page .fill-blanks-editor > button[data-action="exercise-form#openFillBlanksAiModal"]:disabled,
 .exercise-form-page .fill-blanks-editor > button[data-action="exercise-form#convertSelection"]:disabled {
 	opacity: .55;
 	cursor: not-allowed;
@@ -2495,7 +2486,6 @@ body { margin: 0; }
 	overflow-wrap: anywhere;
 }
 @media (max-width: 40rem) {
-	.exercise-form-page .fill-blanks-editor > button[data-action="exercise-form#openFillBlanksAiModal"],
 	.exercise-form-page .fill-blanks-editor > button[data-action="exercise-form#convertSelection"] {
 		margin-right: .25rem;
 		padding-right: .7rem;
@@ -2503,7 +2493,6 @@ body { margin: 0; }
 	}
 }
 @media (prefers-reduced-motion: reduce) {
-	.exercise-form-page .fill-blanks-editor > button[data-action="exercise-form#openFillBlanksAiModal"],
 	.exercise-form-page .fill-blanks-editor > button[data-action="exercise-form#convertSelection"] {
 		transition: none;
 	}
@@ -3449,31 +3438,17 @@ th, td { padding: .75rem; border-bottom: 1px solid #d1d5db; text-align: left; ve
 .exercise-table tr[draggable="true"]:active { cursor: grabbing; }
 .exercise-table .fa-grip-vertical { color: #b8bec8; }
 [data-exercise-form-target="quizFields"] { margin-top: 1.25rem; padding-top: .5rem; border-top: 1px solid #d1d5db; }
-button.quiz-ai-open i { margin-left: .35rem; }
-.exercise-form-page [data-exercise-form-target="quizFields"] > button[data-action="exercise-form#openQuizAiModal"],
-.exercise-form-page .crossword-editor > button[data-action="exercise-form#openCrosswordAiModal"],
-.exercise-form-page .memory-game-editor > [data-exercise-form-target="memoryEditor"] > button[data-action="exercise-form#openMemoryGameAiModal"] { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; width: auto; max-width: 100%; min-height: 2.35rem; margin: .25rem .4rem .5rem 0; padding: .5rem .8rem; border: 1px solid transparent; border-radius: .55rem; background: #4F56D9; color: #FFFFFF; font: inherit; font-size: .9rem; font-weight: 600; line-height: 1.3; text-align: center; cursor: pointer; transition: background-color .16s ease, box-shadow .16s ease, transform .16s ease; }
-.exercise-form-page [data-exercise-form-target="quizFields"] > button[data-action="exercise-form#openQuizAiModal"]:hover:not(:disabled),
-.exercise-form-page .crossword-editor > button[data-action="exercise-form#openCrosswordAiModal"]:hover:not(:disabled),
-.exercise-form-page .memory-game-editor > [data-exercise-form-target="memoryEditor"] > button[data-action="exercise-form#openMemoryGameAiModal"]:hover:not(:disabled) { background: #4249C2; box-shadow: 0 3px 8px rgb(79 86 217 / 18%); transform: translateY(-1px); }
-.exercise-form-page [data-exercise-form-target="quizFields"] > button[data-action="exercise-form#openQuizAiModal"]:focus-visible,
-.exercise-form-page .crossword-editor > button[data-action="exercise-form#openCrosswordAiModal"]:focus-visible,
-.exercise-form-page .memory-game-editor > [data-exercise-form-target="memoryEditor"] > button[data-action="exercise-form#openMemoryGameAiModal"]:focus-visible { outline: 3px solid rgb(79 86 217 / 28%); outline-offset: 2px; }
-.exercise-form-page [data-exercise-form-target="quizFields"] > button[data-action="exercise-form#openQuizAiModal"]:active:not(:disabled),
-.exercise-form-page .crossword-editor > button[data-action="exercise-form#openCrosswordAiModal"]:active:not(:disabled),
-.exercise-form-page .memory-game-editor > [data-exercise-form-target="memoryEditor"] > button[data-action="exercise-form#openMemoryGameAiModal"]:active:not(:disabled) { transform: translateY(0); }
-.exercise-form-page [data-exercise-form-target="quizFields"] > button[data-action="exercise-form#openQuizAiModal"]:disabled,
-.exercise-form-page .crossword-editor > button[data-action="exercise-form#openCrosswordAiModal"]:disabled,
-.exercise-form-page .memory-game-editor > [data-exercise-form-target="memoryEditor"] > button[data-action="exercise-form#openMemoryGameAiModal"]:disabled { opacity: .55; cursor: not-allowed; }
+.exercise-ai-open i { margin-left: .35rem; }
+.exercise-form-page .exercise-ai-open { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; width: auto; max-width: 100%; min-height: 2.35rem; margin: .25rem .4rem .5rem 0; padding: .5rem .8rem; border: 1px solid transparent; border-radius: .55rem; background: #4F56D9; color: #FFFFFF; font: inherit; font-size: .9rem; font-weight: 600; line-height: 1.3; text-align: center; cursor: pointer; transition: background-color .16s ease, box-shadow .16s ease, transform .16s ease; }
+.exercise-form-page .exercise-ai-open:hover:not(:disabled) { background: #4249C2; box-shadow: 0 3px 8px rgb(79 86 217 / 18%); transform: translateY(-1px); }
+.exercise-form-page .exercise-ai-open:focus-visible { outline: 3px solid rgb(79 86 217 / 28%); outline-offset: 2px; }
+.exercise-form-page .exercise-ai-open:active:not(:disabled) { transform: translateY(0); }
+.exercise-form-page .exercise-ai-open:disabled { opacity: .55; cursor: not-allowed; }
 @media (max-width: 40rem) {
-	.exercise-form-page [data-exercise-form-target="quizFields"] > button[data-action="exercise-form#openQuizAiModal"],
-	.exercise-form-page .crossword-editor > button[data-action="exercise-form#openCrosswordAiModal"],
-	.exercise-form-page .memory-game-editor > [data-exercise-form-target="memoryEditor"] > button[data-action="exercise-form#openMemoryGameAiModal"] { margin-right: .25rem; padding-right: .7rem; padding-left: .7rem; }
+	.exercise-form-page .exercise-ai-open { margin-right: .25rem; padding-right: .7rem; padding-left: .7rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-	.exercise-form-page [data-exercise-form-target="quizFields"] > button[data-action="exercise-form#openQuizAiModal"],
-	.exercise-form-page .crossword-editor > button[data-action="exercise-form#openCrosswordAiModal"],
-	.exercise-form-page .memory-game-editor > [data-exercise-form-target="memoryEditor"] > button[data-action="exercise-form#openMemoryGameAiModal"] { transition: none; }
+	.exercise-form-page .exercise-ai-open { transition: none; }
 }
 dialog.quiz-ai-modal { box-sizing: border-box; width: min(36rem, calc(100vw - 2rem)); max-height: 85vh; overflow-y: auto; margin: auto; padding: 1.5rem; border: 1px solid #D7DDEA; border-radius: .9rem; background: #FFFFFF; color: #222843; box-shadow: 0 18px 40px rgb(34 40 67 / 18%); }
 dialog.quiz-ai-modal::backdrop { background: rgb(34 40 67 / 55%); }
@@ -5005,10 +4980,11 @@ dialog.quiz-ai-modal > section.quiz-ai-preview > p { margin: 0 0 .75rem; color: 
 .dashboard-evolution { gap: 1rem; }
 .dashboard-evolution-intro { margin: 0; color: #4A5170; font-size: .9rem; }
 .dashboard-lesson-status--pending { background: #EEF0FF; color: #3F46C4; }
-.time-series-chart { --chart-primary: #4F56D9; --chart-secondary: #25C5A7; --chart-tertiary: #222843; --chart-grid: #E3E7F5; --chart-text: #222843; --chart-muted: #4A5170; display: grid; gap: .75rem; box-sizing: border-box; width: 100%; max-width: none; min-width: 0; margin: 0; padding: 1rem 1.25rem; border: 1px solid #D7DDEA; border-radius: .75rem; background: #FFFFFF; color: var(--chart-text); }
+.time-series-chart { --chart-primary: #4F56D9; --chart-secondary: #25C5A7; --chart-tertiary: #222843; --chart-grid: #E3E7F5; --chart-text: #222843; --chart-muted: #4A5170; container-type: inline-size; display: grid; gap: .75rem; box-sizing: border-box; width: 100%; max-width: none; min-width: 0; margin: 0; padding: 1rem 1.25rem; border: 1px solid #D7DDEA; border-radius: .75rem; background: #FFFFFF; color: var(--chart-text); }
 .time-series-chart-title { margin: 0; font-size: 1.1rem; }
 .time-series-chart-description { margin: .2rem 0 0; color: var(--chart-muted); font-size: .9rem; }
 .time-series-chart-canvas { min-width: 0; }
+.time-series-chart-canvas:focus-visible { outline: 3px solid var(--chart-secondary); outline-offset: 2px; }
 .time-series-chart-svg { display: block; width: 100%; height: auto; overflow: visible; font-family: inherit; animation: time-series-chart-fade .3s ease-out; }
 .time-series-chart-grid { stroke: var(--chart-grid); stroke-width: 1; }
 .time-series-chart-axis { stroke: #AEB5CF; stroke-width: 1.25; }
@@ -5035,7 +5011,7 @@ dialog.quiz-ai-modal > section.quiz-ai-preview > p { margin: 0 0 .75rem; color: 
 .time-series-chart-legend-item.time-series-chart-series--1 .time-series-chart-swatch { color: var(--chart-secondary); }
 .time-series-chart-legend-item.time-series-chart-series--2 .time-series-chart-swatch { color: var(--chart-tertiary); }
 .time-series-chart-empty-message { margin: 0; padding: .75rem 1rem; border: 1px dashed #D7DDEA; border-radius: .5rem; background: #F5F8FF; color: var(--chart-muted); }
-.time-series-chart-table summary { width: fit-content; color: #3F46C4; font-size: .9rem; font-weight: 600; cursor: pointer; }
+.time-series-chart-table summary { width: fit-content; padding-block: .25rem; margin-block: -.25rem; color: #3F46C4; font-size: .9rem; font-weight: 600; cursor: pointer; }
 .time-series-chart-table summary:focus-visible { outline: 3px solid var(--chart-secondary); outline-offset: 2px; }
 .time-series-chart-table-scroll { max-width: 100%; margin-top: .5rem; overflow-x: auto; }
 .time-series-chart-table table { width: 100%; border-collapse: collapse; font-size: .85rem; }
@@ -5044,6 +5020,8 @@ dialog.quiz-ai-modal > section.quiz-ai-preview > p { margin: 0 0 .75rem; color: 
 .time-series-chart-sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 @keyframes time-series-chart-fade { from { opacity: 0; } to { opacity: 1; } }
 @media (max-width: 40rem) { .time-series-chart { padding: .75rem; } .time-series-chart-tick, .time-series-chart-value { font-size: 12px; } }
+/* 640px = viewBox; abaixo disso o gráfico rola em vez de encolher o texto (o padding superior evita cortar rótulos acima do plot). */
+@container (width < 640px) { .time-series-chart-canvas { margin-top: -.5rem; padding-top: .5rem; overflow-x: auto; } .time-series-chart-svg { min-width: 640px; margin-right: .5rem; } }
 @media (prefers-reduced-motion: reduce) { .time-series-chart-svg { animation: none; } }
 @media (max-width: 40rem) { .dashboard-filter.dashboard-filter--inline { grid-template-columns: 1fr; } .dashboard-filter--inline .dashboard-submit { justify-self: stretch; } .dashboard-gamification { padding: 1rem; } }
 .quiz-correct-badge { display: inline-flex; align-items: center; max-width: 100%; margin-left: .5rem; padding: .1rem .4rem; border-radius: 3px; background: #dcfce7; color: #166534; font-size: .85em; font-weight: 600; vertical-align: middle; white-space: normal; }

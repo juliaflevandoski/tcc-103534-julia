@@ -28,7 +28,7 @@ class ClassStudentsController < ApplicationController
     student = Student.active.find(permitted[:student_id])
     @class_student = school_class.class_students.build(student:)
     authorize @class_student, :create?
-    return redirect_to saved_class_student_path if @class_student.save
+    return redirect_to saved_class_student_path, notice: "Matrícula criada com sucesso." if @class_student.save
 
     load_options
     render :new, status: :unprocessable_entity
@@ -48,7 +48,7 @@ class ClassStudentsController < ApplicationController
     student = Student.active.find(permitted[:student_id])
     @class_student.assign_attributes(school_class:, student:)
     authorize @class_student
-    return redirect_to saved_class_student_path if @class_student.save
+    return redirect_to saved_class_student_path, notice: "Matrícula atualizada com sucesso." if @class_student.save
 
     load_options
     render :edit, status: :unprocessable_entity

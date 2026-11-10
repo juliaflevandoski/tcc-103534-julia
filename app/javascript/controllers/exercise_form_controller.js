@@ -101,6 +101,7 @@ export default class extends Controller {
     const isOrdering = this.typeSelectTarget.value === "ordering"
     const isCrossword = this.typeSelectTarget.value === "crossword"
     const isMemoryGame = this.typeSelectTarget.value === "memory_game"
+    if (!isMemoryGame) this.setMemoryGamePreviewMode(false)
     this.titleTarget.required = true
     this.quizFieldsTarget.hidden = !isQuiz
     this.fillBlanksFieldsTarget.hidden = !isFillBlanks
@@ -530,10 +531,7 @@ export default class extends Controller {
     board.className = "memory-board memory-board-preview"
     cards.forEach(({ element, row }) => board.append(this.createMemoryCardFace(element, row)))
     this.memoryPreviewTarget.append(heading, summary, board)
-    this.memoryPreviewTarget.hidden = false
-    this.memoryEditorTarget.hidden = true
-    this.memoryPreviewButtonTarget.hidden = true
-    this.memoryEditButtonTarget.hidden = false
+    this.setMemoryGamePreviewMode(true)
   }
 
   createMemoryCardFace(element, row) {
@@ -558,10 +556,14 @@ export default class extends Controller {
 
   editMemoryGame(event) {
     event.preventDefault()
-    this.memoryPreviewTarget.hidden = true
-    this.memoryEditorTarget.hidden = false
-    this.memoryPreviewButtonTarget.hidden = false
-    this.memoryEditButtonTarget.hidden = true
+    this.setMemoryGamePreviewMode(false)
+  }
+
+  setMemoryGamePreviewMode(previewing) {
+    this.memoryPreviewTarget.hidden = !previewing
+    this.memoryEditorTarget.hidden = previewing
+    this.memoryPreviewButtonTarget.hidden = previewing
+    this.memoryEditButtonTarget.hidden = !previewing
   }
 
   addQuestion(event, question = {}) {

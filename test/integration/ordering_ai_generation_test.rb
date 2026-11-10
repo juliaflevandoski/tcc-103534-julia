@@ -165,7 +165,9 @@ class OrderingAiGenerationTest < ActionDispatch::IntegrationTest
     assert_select "div[data-exercise-form-target='orderingMultipleFields'][hidden]"
     assert_select "template[data-exercise-form-target='orderingSentenceTemplate'] textarea[data-ordering-sentence-text]"
     assert_select "button[data-action='exercise-form#addOrderingSentence']", text: "Adicionar frase"
-    assert_select "div[data-exercise-form-target='orderingAiOpenWrapper'] button[data-action='exercise-form#openOrderingAiModal']"
+    assert_select "div[data-exercise-form-target='orderingAiOpenWrapper'] button.exercise-ai-open[data-action='exercise-form#openOrderingAiModal']", text: "Gerar com IA" do
+      assert_select "i.fa-solid.fa-wand-magic-sparkles[aria-hidden='true']"
+    end
     assert_select "dialog[data-exercise-form-target='orderingAiModal']"
     assert_select "button[data-action='exercise-form#openOrderingAiModal']"
     assert_select "input[data-exercise-form-target='orderingAiTopic'][required]", count: 0

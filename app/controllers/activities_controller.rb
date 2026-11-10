@@ -31,7 +31,7 @@ class ActivitiesController < ApplicationController
     @activity = current_teacher.activities.build(activity_params)
     authorize @activity
     @activity.class_id = nil unless owned_active_class?(@activity.class_id)
-    return redirect_to @activity if @activity.save
+    return redirect_to @activity, notice: "Aula criada com sucesso." if @activity.save
 
     load_options
     render :new, status: :unprocessable_entity
@@ -44,9 +44,19 @@ class ActivitiesController < ApplicationController
 
   def update
     authorize @activity
+    was_published = @activity.published?
     @activity.assign_attributes(activity_params)
     if allowed_class_change?
-      return redirect_to @activity if @activity.save
+      if @activity.save
+        notice = if !was_published && @activity.published?
+          "Aula publicada com sucesso."
+        elsif was_published && !@activity.published?
+          "Aula retornou ao rascunho com sucesso."
+        else
+          "Aula atualizada com sucesso."
+        end
+        return redirect_to @activity, notice:
+      end
     else
       @activity.errors.add(:class_id, "inválida")
     end
@@ -68,7 +78,13 @@ class ActivitiesController < ApplicationController
   end
 
   def load_options
-    @school_classes = current_teacher.school_classes.active.order(:name)
+    @school_classes = current_teacher.school_classes.active.order(:name).to_a
+    return unless @activity.persisted?
+
+    original_class_id = @activity.class_id_in_database
+    original_class = current_teacher.school_classes.find_by(id: original_class_id)
+    @school_classes << original_class if original_class && !original_class.active?
+    @school_classes.sort_by!(&:name)
   end
 
   def activity_params

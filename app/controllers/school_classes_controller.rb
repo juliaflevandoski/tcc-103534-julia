@@ -28,7 +28,7 @@ class SchoolClassesController < ApplicationController
   def create
     @school_class = current_teacher.school_classes.build(school_class_params)
     authorize @school_class
-    return redirect_to @school_class if @school_class.save
+    return redirect_to @school_class, notice: "Turma criada com sucesso." if @school_class.save
 
     render :new, status: :unprocessable_entity
   end
@@ -37,7 +37,7 @@ class SchoolClassesController < ApplicationController
 
   def update
     authorize @school_class
-    return redirect_to @school_class if @school_class.update(school_class_params)
+    return redirect_to @school_class, notice: "Turma atualizada com sucesso." if @school_class.update(school_class_params)
 
     render :edit, status: :unprocessable_entity
   end

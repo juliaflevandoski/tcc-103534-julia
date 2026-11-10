@@ -22,6 +22,9 @@ class EmptyLessonNoticeTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".empty-lesson-notice", text: TEACHER_MESSAGE, count: 1
     assert_select "p", text: STUDENT_MESSAGE, count: 0
+    assert_select "table.exercise-table", count: 0
+    assert_select "form[action='#{activity_exercises_path}']", count: 1
+    assert_select "a[href='#{new_exercise_path(activity_id: @activity.id)}']", text: "Criar exercício"
   end
 
   test "enrolled student sees the student message on an empty lesson" do
@@ -31,6 +34,7 @@ class EmptyLessonNoticeTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".empty-lesson-notice", text: STUDENT_MESSAGE, count: 1
     assert_select "p", text: TEACHER_MESSAGE, count: 0
+    assert_select "table.exercise-table", count: 0
   end
 
   test "lesson with only inactive exercises or inactive links shows the notices" do
@@ -42,7 +46,7 @@ class EmptyLessonNoticeTest < ActionDispatch::IntegrationTest
     login_as(@teacher, "teacher")
     get activity_url(@activity)
     assert_select ".empty-lesson-notice", text: TEACHER_MESSAGE, count: 1
-    assert_select "table.exercise-table tbody tr", count: 0
+    assert_select "table.exercise-table", count: 0
 
     delete logout_url
     login_as(@student, "student")

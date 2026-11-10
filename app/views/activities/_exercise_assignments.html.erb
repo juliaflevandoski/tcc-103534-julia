@@ -29,36 +29,38 @@
         <p class="empty-lesson-notice activity-exercise-empty-state">Esta aula ainda não possui exercícios disponíveis.</p>
       <% end %>
     <% end %>
-    <% if current_teacher %>
-      <table class="exercise-table activity-exercise-list-table activity-exercise-list-table--teacher" data-controller="sortable-exercises" data-sortable-exercises-url-value="<%= reorder_activity_exercises_path(activity) %>">
-    <% else %>
-      <table class="exercise-table activity-exercise-list-table activity-exercise-list-table--student">
-    <% end %>
-      <thead><tr><th>Posição</th><th>Exercício</th><th>Pontos</th><% if current_teacher %><th>Ações</th><% end %></tr></thead>
+    <% unless activity_exercises.empty? %>
       <% if current_teacher %>
-        <tbody data-sortable-exercises-target="list">
+        <table class="exercise-table activity-exercise-list-table activity-exercise-list-table--teacher" data-controller="sortable-exercises" data-sortable-exercises-url-value="<%= reorder_activity_exercises_path(activity) %>">
       <% else %>
-        <tbody>
+        <table class="exercise-table activity-exercise-list-table activity-exercise-list-table--student">
       <% end %>
-      <% activity_exercises.each do |activity_exercise| %>
+        <thead><tr><th>Posição</th><th>Exercício</th><th>Pontos</th><% if current_teacher %><th>Ações</th><% end %></tr></thead>
         <% if current_teacher %>
-          <tr draggable="true" data-id="<%= activity_exercise.id %>">
+          <tbody data-sortable-exercises-target="list">
         <% else %>
-          <tr>
+          <tbody>
         <% end %>
-          <td class="activity-exercise-position"><% if current_teacher %><i class="fa-solid fa-grip-vertical" aria-hidden="true" title="Arrastar para reordenar"></i><% end %> <span data-position><%= activity_exercise.position %></span></td>
-          <td class="activity-exercise-title"><%= link_to activity_exercise.exercise.title, exercise_path(activity_exercise.exercise, **{ activity_exercise_id: activity_exercise.id, activity_id: (activity.id if current_teacher) }.compact) %></td>
-          <td class="activity-exercise-points"><%= activity_exercise.points %></td>
-          <% if current_teacher %>
-            <td class="activity-exercise-actions">
-              <%= button_to activity_exercise_path(activity_exercise), method: :delete, class: "button activity-exercise-remove", title: "Remover exercício", aria: { label: "Remover exercício" }, form: { data: { turbo_confirm: "Remover este exercício da aula? O exercício continuará disponível na sua lista." } } do %>
-                <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+          <% activity_exercises.each do |activity_exercise| %>
+            <% if current_teacher %>
+              <tr draggable="true" data-id="<%= activity_exercise.id %>">
+            <% else %>
+              <tr>
+            <% end %>
+              <td class="activity-exercise-position"><% if current_teacher %><i class="fa-solid fa-grip-vertical" aria-hidden="true" title="Arrastar para reordenar"></i><% end %> <span data-position><%= activity_exercise.position %></span></td>
+              <td class="activity-exercise-title"><%= link_to activity_exercise.exercise.title, exercise_path(activity_exercise.exercise, **{ activity_exercise_id: activity_exercise.id, activity_id: (activity.id if current_teacher) }.compact) %></td>
+              <td class="activity-exercise-points"><%= activity_exercise.points %></td>
+              <% if current_teacher %>
+                <td class="activity-exercise-actions">
+                  <%= button_to activity_exercise_path(activity_exercise), method: :delete, class: "button activity-exercise-remove", title: "Remover exercício", aria: { label: "Remover exercício" }, form: { data: { turbo_confirm: "Remover este exercício da aula? O exercício continuará disponível na sua lista." } } do %>
+                    <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+                  <% end %>
+                </td>
               <% end %>
-            </td>
+            </tr>
           <% end %>
-        </tr>
-      <% end %>
-      </tbody>
-    </table>
+        </tbody>
+      </table>
+    <% end %>
   </section>
 </section>

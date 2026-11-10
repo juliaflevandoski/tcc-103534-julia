@@ -162,7 +162,9 @@ class MemoryGameAiGenerationTest < ActionDispatch::IntegrationTest
     get new_exercise_url
     assert_response :success
     assert_select "dialog[data-exercise-form-target='memoryGameAiModal']"
-    assert_select "button[data-action='exercise-form#openMemoryGameAiModal']"
+    assert_select "button.exercise-ai-open[data-action='exercise-form#openMemoryGameAiModal']", text: "Gerar com IA" do
+      assert_select "i.fa-solid.fa-wand-magic-sparkles[aria-hidden='true']"
+    end
     assert_select "input[data-memory-image][accept='image/png,image/jpeg,image/webp']"
     assert_select "input[data-exercise-form-target='memoryAiTopic'][required]", count: 0
     assert_select "button[data-action='exercise-form#addMemoryPair']", text: "Adicionar par"

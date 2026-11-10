@@ -16,9 +16,11 @@ class ResultsDashboard
       activity.activity_exercises.select { |link| link.active? && link.exercise.active? }
     end
 
+    attempts_by_link = load_attempts(activity_exercises, student_ids)
+
     activity_results = activities.map do |activity|
       exercise_results = activity_exercises.select { |link| link.activity_id == activity.id }.map do |link|
-        build_exercise_result(link, student_ids)
+        build_exercise_result(link, attempts_by_link.fetch(link.id, []))
       end
       { activity:, exercises: exercise_results }
     end
@@ -64,14 +66,20 @@ class ResultsDashboard
     activities.order(:created_at, :id).to_a
   end
 
-  def build_exercise_result(activity_exercise, student_ids)
-    official_by_student = ActivityResults.official_attempts(activity_exercise:).select do |student_id, _attempt|
-      student_ids.include?(student_id)
-    end
-    attempts_by_student = ExerciseAttempt.where(
-      activity_exercise_id: activity_exercise.id,
-      student_id: student_ids
-    ).includes(:student).order(:created_at, :id).to_a.group_by(&:student_id)
+  # Uma consulta para todos os vínculos elegíveis; inclui tentativas inativas e inválidas.
+  def load_attempts(activity_exercises, student_ids)
+    return {} if activity_exercises.empty? || student_ids.empty?
+
+    links_by_id = activity_exercises.index_by(&:id)
+    attempts = ExerciseAttempt.where(activity_exercise_id: links_by_id.keys, student_id: student_ids)
+      .includes(:student).order(:created_at, :id).to_a
+    attempts.each { |attempt| attempt.association(:activity_exercise).target = links_by_id.fetch(attempt.activity_exercise_id) }
+    attempts.group_by(&:activity_exercise_id)
+  end
+
+  def build_exercise_result(activity_exercise, attempts)
+    official_by_student = ActivityResults.official_attempts_from(activity_exercise:, attempts:)
+    attempts_by_student = attempts.group_by(&:student_id)
     percentage_by_student = official_by_student.transform_values do |attempt|
       ActivityResults.attempt_percentage(attempt:)
     end

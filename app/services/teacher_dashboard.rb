@@ -30,7 +30,8 @@ class TeacherDashboard
   end
 
   def call
-    data = scoped(ResultsDashboard.call(user: @teacher, school_class: @school_class))
+    full_data = ResultsDashboard.call(user: @teacher, school_class: @school_class)
+    data = scoped(full_data)
     exercise_links = data.fetch(:activities).flat_map { |activity| activity.fetch(:exercises) }
     possible = data.fetch(:possible_exercises)
     completed = data.fetch(:completed_exercises)
@@ -45,7 +46,7 @@ class TeacherDashboard
       completed_exercises: completed,
       possible_exercises: possible,
       exercise_completion_percentage: possible.positive? ? completed.to_f / possible * 100 : nil,
-      lesson_completions: lesson_completions(data),
+      lesson_completions: lesson_completions(data, full_data),
       best_exercises: ranked_exercises(data).sort_by { |ranking| [ -ranking.average, ranking.activity_exercise.id ] }.first(RANKING_SIZE),
       worst_exercises: ranked_exercises(data).sort_by { |ranking| [ ranking.average, ranking.activity_exercise.id ] }.first(RANKING_SIZE)
     )
@@ -93,13 +94,20 @@ class TeacherDashboard
     result.merge(official_by_student: official, percentage_by_student: percentages, average_percentage: ActivityResults.mean_percentage(percentages.values))
   end
 
-  def lesson_completions(data)
+  # Mesma regra de ActivityResults.lesson_completed?, lida dos resultados em lote; usa full_data porque o filtro de exercício não muda os exercícios obrigatórios da aula.
+  def lesson_completions(data, full_data)
     students = data.fetch(:students)
+    required_by_activity = full_data.fetch(:activities).to_h { |activity_result| [ activity_result.fetch(:activity).id, activity_result.fetch(:exercises) ] }
     data.fetch(:activities).map do |activity_result|
       activity = activity_result.fetch(:activity)
       next LessonCompletion.new(activity:, completed_count: nil, eligible_count: students.length, percentage: nil) unless activity.published?
 
-      completed = students.count { |student| ActivityResults.lesson_completed?(activity:, student:) }
+      required = required_by_activity.fetch(activity.id)
+      completed = if @school_class.active? && required.any?
+        students.count { |student| required.all? { |result| result.fetch(:official_by_student).key?(student.id) } }
+      else
+        0
+      end
       LessonCompletion.new(
         activity:,
         completed_count: completed,

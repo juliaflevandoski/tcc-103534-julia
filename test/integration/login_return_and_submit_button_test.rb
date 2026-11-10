@@ -89,18 +89,34 @@ class LoginReturnAndSubmitButtonTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_url
   end
 
-  test "failed login keeps the saved location for the next attempt" do
+  test "failed teacher login keeps username without password, then returns to the saved location after success" do
     get exercises_url
     post login_url, params: { role: "teacher", username: @teacher.username, password: "wrong" }
-    assert_redirected_to login_url(role: "teacher")
-    assert_equal "Usuário ou senha inválidos.", flash[:alert]
-    follow_redirect!
+    assert_response :unprocessable_entity
     assert_select ".alert", text: "Usuário ou senha inválidos."
+    assert_select "input[name='username'][value='#{@teacher.username}']"
+    assert_select "input[name='password'][value]", count: 0
+    assert_not_includes response.body, "wrong"
+    assert_not_includes response.body, "password=wrong"
 
     login_as(@teacher, "teacher")
 
     assert_redirected_to exercises_url
     assert_equal "Login realizado com sucesso.", flash[:notice]
+  end
+
+  test "failed student login keeps username, clears password, and displays the error" do
+    post login_url, params: { role: "student", username: @student.username, password: "wrong" }
+
+    assert_response :unprocessable_entity
+    assert_select ".alert", text: "Usuário ou senha inválidos."
+    assert_select "input[name='username'][value='#{@student.username}']"
+    assert_select "input[name='password'][value]", count: 0
+    assert_not_includes response.body, "wrong"
+
+    get login_url(role: "student")
+    assert_response :success
+    assert_select "input[name='username'][value]", count: 0
   end
 
   test "non GET, JSON and AJAX requests are never stored" do

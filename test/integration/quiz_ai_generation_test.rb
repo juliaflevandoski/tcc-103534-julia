@@ -125,7 +125,7 @@ class QuizAiGenerationTest < ActionDispatch::IntegrationTest
     get new_exercise_url
 
     assert_response :success
-    assert_select "button.quiz-ai-open[data-action='exercise-form#openQuizAiModal']" do
+    assert_select "button.quiz-ai-open.exercise-ai-open[data-action='exercise-form#openQuizAiModal']", text: "Gerar com IA" do
       assert_select "i.fa-solid.fa-wand-magic-sparkles[aria-hidden='true']"
     end
     assert_select "dialog.quiz-ai-modal[data-exercise-form-target='quizAiModal']:not([open])"

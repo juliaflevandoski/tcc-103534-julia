@@ -2,7 +2,10 @@
 <%= form_with model: activity, class: "simple-form-card" do |form| %>
   <div class="simple-form-field">
     <%= form.label :class_id, "Turma" %>
-    <%= form.collection_select :class_id, school_classes, :id, :name, include_blank: true, required: true %>
+    <%= form.select :class_id,
+      school_classes.map { |school_class| [school_class.active? ? school_class.name : "#{school_class.name} (desativada)", school_class.id] },
+      { include_blank: true },
+      required: true %>
   </div>
   <div class="simple-form-field">
     <%= form.label :title, "Título" %>

@@ -2,6 +2,14 @@ class ActivityResults
   def self.official_attempts(activity_exercise:)
     return {} unless activity_exercise&.persisted?
 
+    attempts = ExerciseAttempt.where(activity_exercise_id: activity_exercise.id).includes(activity_exercise: :exercise)
+    official_attempts_from(activity_exercise:, attempts:)
+  end
+
+  # Ponto único da regra de oficialidade; `attempts` pode vir de uma consulta em lote, em qualquer ordem.
+  def self.official_attempts_from(activity_exercise:, attempts:)
+    return {} unless activity_exercise&.persisted?
+
     exercise = activity_exercise.exercise
     return {} unless Exercises::ExerciseContentValidator.call(
       exercise_type: exercise.exercise_type,
@@ -9,9 +17,7 @@ class ActivityResults
       attached_image_blob_ids: exercise.memory_images_attachments.map(&:blob_id)
     ).success?
 
-    ExerciseAttempt.where(activity_exercise_id: activity_exercise.id)
-      .includes(activity_exercise: :exercise)
-      .order(:created_at, :id)
+    attempts.sort_by { |attempt| [ attempt.created_at, attempt.id ] }
       .each_with_object({}) do |attempt, official_by_student|
         next if official_by_student.key?(attempt.student_id)
         next unless Exercises::AttemptValidity.valid_attempt?(attempt)

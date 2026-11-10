@@ -4,7 +4,7 @@
 <% memory_in_progress = exercise.memory_game? && !answer["completed"] && @exercise_attempt.active? %>
 <main class="attempt-result-page">
 	<nav class="attempt-result-navigation" aria-label="Navegação de resultados">
-		<%= link_to "Resultados", exercise_attempts_path(school_class_id: @exercise_attempt.activity_exercise.activity.class_id) %>
+		<%= link_to "Resultados", exercise_attempts_path(school_class_id: @results_school_class_id) %>
 		<%= link_to "Voltar à aula", activity_path(@exercise_attempt.activity_exercise.activity) if @return_to_activity %>
 	</nav>
 
@@ -67,7 +67,7 @@
 			<% end %>
 		</ol>
 		<p class="attempt-result-note">XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
-		<%= link_to "Tentar novamente", exercise_path(exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
+		<%= link_to "Tentar novamente", exercise_path(exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" if @can_access_exercise %>
 	<% elsif exercise.fill_blanks? && current_student %>
 		<% feedback = @exercise_attempt.correct.fetch("blanks", []) %>
 		<% answers = answer.fetch("answers", {}) %>
@@ -82,7 +82,7 @@
 			<% end %>
 		</ol>
 		<p class="attempt-result-note">XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
-		<%= link_to "Tentar novamente", exercise_path(exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
+		<%= link_to "Tentar novamente", exercise_path(exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" if @can_access_exercise %>
 	<% elsif exercise.ordering? && current_student %>
 		<% if exercise.object.deep_stringify_keys["format"] == Exercises::ExerciseContentValidator::MULTIPLE_SENTENCES_FORMAT %>
 			<% sentence_feedback = @exercise_attempt.correct.fetch("sentences", []) %>
@@ -117,7 +117,7 @@
 			<p class="attempt-result-note">Sequência correta:</p>
 		<% end %>
 		<p class="attempt-result-note">XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
-		<%= link_to "Tentar novamente", exercise_path(exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
+		<%= link_to "Tentar novamente", exercise_path(exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" if @can_access_exercise %>
 	<% elsif exercise.crossword? && current_student %>
 		<% statuses = @exercise_attempt.correct.fetch("statuses", {}) %>
 		<% entries = exercise.object.fetch("words", []) %>
@@ -131,7 +131,7 @@
 			<% end %>
 		</ul>
 		<p class="attempt-result-note">XP concedido nesta tentativa: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
-		<%= link_to "Tentar novamente", exercise_path(exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" %>
+		<%= link_to "Tentar novamente", exercise_path(exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id), class: "button" if @can_access_exercise %>
 	<% elsif exercise.memory_game? && current_student %>
 		<% result = answer %>
 		<ul class="attempt-memory-summary">
@@ -144,7 +144,7 @@
 		<% if result["completed"] %>
 			<p class="attempt-result-note">XP concedido nesta partida: <%= @exercise_attempt.correct["xp_award_claimed"] ? @exercise_attempt.score : 0 %></p>
 		<% end %>
-		<%= link_to "Voltar ao jogo", exercise_path(exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id, memory_game_attempt_id: @exercise_attempt.id), class: "button" if !result["completed"] && @exercise_attempt.active? %>
+		<%= link_to "Voltar ao jogo", exercise_path(exercise, activity_exercise_id: @exercise_attempt.activity_exercise.id, memory_game_attempt_id: @exercise_attempt.id), class: "button" if @can_access_exercise && !result["completed"] && @exercise_attempt.active? %>
 	<% else %>
 		<p>Esta tentativa não possui feedback detalhado para exibição.</p>
 	<% end %>

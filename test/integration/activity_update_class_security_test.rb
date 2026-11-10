@@ -45,6 +45,87 @@ class ActivityUpdateClassSecurityTest < ActionDispatch::IntegrationTest
     assert_equal @class_b.id, @activity.reload.class_id
   end
 
+  test "teacher can view and edit an activity whose class was deactivated" do
+    @class_a.update!(active: false)
+    login(@teacher)
+
+    get activity_url(@activity)
+
+    assert_response :success
+    assert_select ".activity-show-class", text: /Turma A/
+    assert_select ".activity-show-class-status", text: "Turma desativada"
+    assert_select ".activity-show-class a[href='#{school_class_path(@class_a)}']", count: 0
+    assert_select ".activity-show-actions a.activity-show-back-button", count: 0
+    assert_select ".activity-show-actions a[href='#{edit_activity_path(@activity)}']", text: "Editar"
+
+    get edit_activity_url(@activity)
+
+    assert_response :success
+    assert_select "select[name='activity[class_id]'] option[value='#{@class_a.id}'][selected]", text: "Turma A (desativada)"
+    assert_select "select[name='activity[class_id]'] option[value='#{@class_b.id}']", text: "Turma B"
+    assert_select "select[name='activity[class_id]'] option[value='#{@inactive.id}']", count: 0
+    assert_select "select[name='activity[class_id]'] option[value='#{@foreign.id}']", count: 0
+  end
+
+  test "teacher can edit an activity without changing its deactivated class" do
+    @class_a.update!(active: false)
+    login(@teacher)
+
+    patch activity_url(@activity), params: { activity: { class_id: @class_a.id, title: "Editada na turma desativada" } }
+
+    assert_redirected_to activity_url(@activity)
+    assert_equal "Editada na turma desativada", @activity.reload.title
+    assert_equal @class_a.id, @activity.class_id
+  end
+
+  test "teacher can transfer an activity from a deactivated class to another own active class" do
+    @class_a.update!(active: false)
+    login(@teacher)
+
+    patch activity_url(@activity), params: { activity: { class_id: @class_b.id, title: "Transferida" } }
+
+    assert_redirected_to activity_url(@activity)
+    assert_equal "Transferida", @activity.reload.title
+    assert_equal @class_b.id, @activity.class_id
+  end
+
+  test "teacher cannot transfer an activity from a deactivated class to another inactive or foreign class" do
+    inactive_other = @teacher.school_classes.create!(name: "Outra turma inativa", active: false)
+    @class_a.update!(active: false)
+    login(@teacher)
+
+    [ @foreign.id, inactive_other.id ].each do |target_class_id|
+      patch activity_url(@activity), params: { activity: { class_id: target_class_id, title: "Não deve salvar" } }
+
+      assert_response :unprocessable_entity
+      @activity.reload
+      assert_equal @class_a.id, @activity.class_id
+      assert_equal "Aula original", @activity.title
+    end
+  end
+
+  test "student cannot view an activity linked to a deactivated class" do
+    @class_a.update!(active: false)
+    login(@student)
+
+    get activity_url(@activity)
+
+    assert_redirected_to root_url
+  end
+
+  test "another teacher cannot view or edit an activity linked to a deactivated class" do
+    @class_a.update!(active: false)
+    login(@other_teacher)
+
+    get activity_url(@activity)
+
+    assert_redirected_to root_url
+
+    get edit_activity_url(@activity)
+
+    assert_redirected_to root_url
+  end
+
   test "teacher cannot move the activity to foreign, inactive or missing classes" do
     login(@teacher)
 

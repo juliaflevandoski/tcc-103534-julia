@@ -218,7 +218,7 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     assert_select "tr[data-id='#{second_exercise.activity_exercises.first.id}'] td form[action='#{activity_exercise_path(second_exercise.activity_exercises.first)}'] input[name='_method'][value='delete']"
     assert_select "tr[data-id='#{second_exercise.activity_exercises.first.id}'] i.fa-solid.fa-grip-vertical"
     assert_select "tr[data-id='#{second_exercise.activity_exercises.first.id}'] span[data-position]", text: "2"
-    assert_operator response.body.index("action=\"#{activity_exercises_path}\""), :<, response.body.index('<table class="exercise-table"')
+    assert_operator response.body.index("action=\"#{activity_exercises_path}\""), :<, response.body.index(/<table[^>]*class="(?:[^"]*\s)?exercise-table[\s"]/)
 
     delete activity_exercise_url(second_exercise.activity_exercises.first)
     assert_redirected_to activity_url(activity)

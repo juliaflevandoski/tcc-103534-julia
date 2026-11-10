@@ -53,6 +53,32 @@ class ActivityResultsTest < ActiveSupport::TestCase
     assert_equal first, ActivityResults.official_attempt(activity_exercise:, student: @student)
   end
 
+  test "official_attempts_from applies the same selection to batched attempts in any order" do
+    activity_exercise = create_quiz_link
+    first = submit_quiz(activity_exercise)
+    Exercises::QuizSubmission.call(activity_exercise:, student: @student, answers: { "0" => "a", "1" => "42" })
+    other = Exercises::QuizSubmission.call(activity_exercise:, student: @other_student, answers: { "0" => "a", "1" => "42" }).attempt
+    first.update!(active: false)
+    attempts = ExerciseAttempt.where(activity_exercise_id: activity_exercise.id).to_a.reverse
+
+    official = ActivityResults.official_attempts_from(activity_exercise:, attempts:)
+
+    assert_equal ActivityResults.official_attempts(activity_exercise:), official
+    assert_equal first, official[@student.id]
+    assert_equal other, official[@other_student.id]
+    assert_not official.key?(@unattempted_student.id)
+  end
+
+  test "official_attempts_from returns nothing for an unsaved link or exercise content that is no longer valid" do
+    activity_exercise = create_quiz_link
+    submit_quiz(activity_exercise)
+    attempts = ExerciseAttempt.where(activity_exercise_id: activity_exercise.id).to_a
+
+    assert_equal({}, ActivityResults.official_attempts_from(activity_exercise: ActivityExercise.new, attempts:))
+    activity_exercise.exercise.update_columns(object: {})
+    assert_equal({}, ActivityResults.official_attempts_from(activity_exercise: activity_exercise.reload, attempts:))
+  end
+
   test "official attempt ordering uses created_at then ID, not a client-selected marker" do
     activity_exercise = create_quiz_link
     first_created = Exercises::QuizSubmission.call(

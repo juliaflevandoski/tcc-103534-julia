@@ -69,7 +69,10 @@ class AccountCredentialsFlowTest < ActionDispatch::IntegrationTest
       other = role == "teacher" ? "student" : "teacher"
 
       post login_url, params: { role: other, username: "login_#{role}", password: "secret123" }
-      assert_redirected_to login_url(role: other)
+      assert_response :unprocessable_entity
+      assert_select ".alert", text: "Usuário ou senha inválidos."
+      assert_select "input[name='username'][value='login_#{role}']"
+      assert_not_includes response.body, "secret123"
 
       post login_url, params: { role:, username: "login_#{role}", password: "secret123" }
       assert_redirected_to root_url

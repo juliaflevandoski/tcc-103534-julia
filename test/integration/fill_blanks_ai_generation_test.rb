@@ -126,7 +126,9 @@ class FillBlanksAiGenerationTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "dialog[data-exercise-form-target='fillBlanksAiModal']"
-    assert_select "button[data-action='exercise-form#openFillBlanksAiModal']"
+    assert_select "button.exercise-ai-open[data-action='exercise-form#openFillBlanksAiModal']", text: "Gerar com IA" do
+      assert_select "i.fa-solid.fa-wand-magic-sparkles[aria-hidden='true']"
+    end
     assert_select "input[data-exercise-form-target='fillBlanksAiTopic'][required]", count: 0
     assert_select "select[data-exercise-form-target='fillBlanksAiDifficulty'][required]", count: 0
     assert_select "input[data-exercise-form-target='fillBlanksAiCount'][required]", count: 0

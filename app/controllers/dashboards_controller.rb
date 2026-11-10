@@ -55,6 +55,10 @@ class DashboardsController < ApplicationController
     end
 
     @dashboard = TeacherDashboard.call(teacher: current_teacher, school_class: @selected_school_class, activity: @selected_activity, activity_exercise: @selected_activity_exercise, student: @selected_student)
+    @series = OfficialAttemptSeries.call(
+      user: current_teacher, school_classes: [ @selected_school_class ],
+      student: @selected_student, activity: @selected_activity, activity_exercise: @selected_activity_exercise
+    )
   end
 
   private

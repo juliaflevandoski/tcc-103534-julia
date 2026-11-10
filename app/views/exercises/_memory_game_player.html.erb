@@ -50,8 +50,21 @@
 			<% game.fetch(:card_ids).each do |card_id| %>
 				<% card = revealed_cards[card_id] %>
 				<% found = game.fetch(:matched_card_ids).include?(card_id) %>
+				<% card_description = card && (card["description"].presence || card["ai_description"].presence) %>
+				<% card_content = card && (card["type"] == "word" ? card.fetch("content") : card_description.presence || "imagem") %>
+				<% card_label = if card
+					if found
+						"Par encontrado: #{card_content}"
+					elsif card["type"] == "image" && card_description.present?
+						"Imagem revelada: #{card_content}"
+					else
+						"Carta revelada: #{card_content}"
+					end
+				else
+					"Carta virada para baixo"
+				end %>
 				<button type="button" class="memory-card <%= "is-found" if found %> <%= "is-revealed" if card %>"
-					aria-label="<%= card ? (found ? "Par encontrado" : "Carta revelada") : "Carta virada para baixo" %>"
+					aria-label="<%= card_label %>"
 					<%= "disabled" if found %>
 					data-action="memory-game#selectCard"
 					data-memory-game-target="card"
@@ -64,7 +77,7 @@
 						<% if card.fetch("type") == "word" %>
 							<%= card.fetch("content") %>
 						<% else %>
-							<%= image_tag card.fetch("url"), alt: "Imagem da carta" %>
+							<%= image_tag card.fetch("url"), alt: card_description.to_s %>
 						<% end %>
 					<% else %>
 						<span aria-hidden="true">?</span>

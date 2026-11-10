@@ -46,6 +46,20 @@ class ExerciseTeacherPreviewTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "<pre>"
   end
 
+  test "memory game return-to-edit button starts hidden in the form actions" do
+    get new_exercise_url
+
+    assert_response :success
+    assert_select "[data-exercise-form-target='memoryEditor'] button[data-action='exercise-form#editMemoryGame']", count: 0
+    assert_select ".exercise-form-actions > button.memory-edit-button[type='button'][data-action='exercise-form#editMemoryGame'][hidden]",
+      text: "Voltar para edição",
+      count: 1
+    assert_select "fieldset[data-exercise-form-target='memoryGameFields'] [data-exercise-form-target='memoryEditor'] input[data-memory-image]", minimum: 1
+    assert_select ".exercise-form-actions > input.exercise-form-submit[type='submit']", value: "Salvar", count: 1
+    assert_select ".exercise-form-actions > a.exercise-form-cancel", text: "Cancelar", count: 1
+    assert_select ".memory-game-actions > button.memory-preview-button[data-action='exercise-form#previewMemoryGame']", text: "Pré-visualizar jogo", count: 1
+  end
+
   test "teacher sees fill blanks as visible slots and a separate readable answer key" do
     exercise = @teacher.exercises.create!(
       title: "Lacunas de geografia",

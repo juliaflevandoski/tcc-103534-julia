@@ -32,6 +32,8 @@ class ExerciseAttemptsController < ApplicationController
     @attempt_percentage = ActivityResults.attempt_percentage(attempt: @exercise_attempt)
     @attempt_result_summary = attempt_result_summary
     activity = @exercise_attempt.activity_exercise.activity
+    @can_access_exercise = current_student.present? && policy(@exercise_attempt.activity_exercise).show?
+    @results_school_class_id = activity.class_id unless current_student && !results_school_classes.exists?(id: activity.class_id)
     @return_to_activity = if current_teacher
       activity.active? && activity.teacher_id == current_teacher.id
     else
@@ -351,13 +353,22 @@ class ExerciseAttemptsController < ApplicationController
 
     exercise = @exercise_attempt.activity_exercise.exercise
     attachment = exercise.memory_images_attachments.find_by!(blob_id: card.fetch("blob_id"))
-    { "id" => card.fetch("id"), "type" => "image", "url" => rails_blob_path(attachment.blob, only_path: true) }
+    description = card["description"].presence || card["ai_description"].presence
+    {
+      "id" => card.fetch("id"),
+      "type" => "image",
+      "url" => rails_blob_path(attachment.blob, only_path: true),
+      "description" => description
+    }.compact
   end
 
   def create_crossword_attempt
     permitted = params.require(:exercise_attempt).permit(:activity_exercise_id, :answer, :time_spent)
     @activity_exercise = ActivityExercise.active.find(permitted[:activity_exercise_id])
     authorize @activity_exercise, :show?
+    unless valid_crossword_content?(@activity_exercise.exercise.object)
+      return redirect_to activity_path(@activity_exercise.activity), alert: CROSSWORD_UNAVAILABLE_MESSAGE
+    end
 
     answer = parse_crossword_answer(permitted[:answer])
     answer = sanitize_crossword_answer(@activity_exercise.exercise.object, answer)

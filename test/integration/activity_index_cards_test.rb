@@ -46,6 +46,22 @@ class ActivityIndexCardsTest < ActionDispatch::IntegrationTest
     assert_redirected_to school_classes_url
   end
 
+  test "teacher keeps activities linked to deactivated classes visible without class links" do
+    inactive_class = @teacher.school_classes.create!(name: "Turma desativada")
+    inactive_activity = inactive_class.activities.create!(title: "Aula de turma desativada")
+    inactive_class.update!(active: false)
+    sign_in(@teacher)
+
+    get activities_url
+
+    assert_response :success
+    assert_select ".activities-index-card h2", text: inactive_activity.title
+    assert_select ".activities-index-card .activities-index-class-status", text: "Turma desativada"
+    assert_select ".activities-index-card a[href='#{school_class_path(inactive_class)}']", count: 0
+    assert_select ".activities-index-card a[href='#{activity_path(inactive_activity)}']", text: "Ver"
+    assert_select ".activities-index-card a[href='#{edit_activity_path(inactive_activity)}']", text: "Editar"
+  end
+
   private
 
   def create_teacher(prefix)
